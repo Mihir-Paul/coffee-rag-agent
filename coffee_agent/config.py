@@ -15,7 +15,7 @@ MENU_FILE_PATH = Path(os.getenv("MENU_FILE_PATH", DATA_DIR / "menu.json"))
 CUSTOMERS_FILE_PATH = Path(os.getenv("CUSTOMERS_FILE_PATH", DATA_DIR / "customers.json"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 DEFAULT_MODEL = GEMINI_MODEL
 
 

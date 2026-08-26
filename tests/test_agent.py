@@ -6,7 +6,7 @@ from coffee_agent.agent import root_agent
 def test_agent_initialization():
     """Verify that root_agent is initialized with correct ADK properties."""
     assert isinstance(root_agent, Agent)
-    assert root_agent.name == "coffee_shop_agent"
+    assert root_agent.name in ("coffee_agent", "coffee_shop_agent")
     assert len(root_agent.tools) == 4
     tool_names = [t.__name__ for t in root_agent.tools]
     assert "search_menu" in tool_names

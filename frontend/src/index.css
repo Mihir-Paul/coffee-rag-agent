@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  /* Light Theme Palette */
+  --bg-primary: #fdfaf6;
+  --bg-secondary: #f4eee7;
+  --bg-card: #ffffff;
+  --bg-sidebar: #241915;
+  --sidebar-text: #f4eee7;
+  --sidebar-hover: #362822;
+
+  --text-primary: #2a1f1b;
+  --text-secondary: #6e5c54;
+  --text-muted: #9c8a82;
+
+  --accent-primary: #c87a37;
+  --accent-secondary: #8c4e23;
+  --accent-light: #f6e8db;
+  --accent-gold: #e5a93c;
+
+  --border-color: #e6dcce;
+  --card-border: #ede4d8;
+  --shadow-sm: 0 2px 8px rgba(42, 31, 27, 0.04);
+  --shadow-md: 0 4px 20px rgba(42, 31, 27, 0.08);
+  --shadow-lg: 0 10px 30px rgba(42, 31, 27, 0.12);
+
+  --user-bubble: #c87a37;
+  --user-text: #ffffff;
+  --bot-bubble: #ffffff;
+  --bot-border: #ede4d8;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #120e0c;
+  --bg-secondary: #1a1411;
+  --bg-card: #221a16;
+  --bg-sidebar: #16100d;
+  --sidebar-text: #f4eee7;
+  --sidebar-hover: #2d221d;
+
+  --text-primary: #f4eee7;
+  --text-secondary: #b8a89f;
+  --text-muted: #7d6c63;
+
+  --accent-primary: #d98845;
+  --accent-secondary: #a35d2d;
+  --accent-light: #34241a;
+  --accent-gold: #f0b446;
+
+  --border-color: #2f231c;
+  --card-border: #382b23;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+
+  --user-bubble: #d98845;
+  --user-text: #ffffff;
+  --bot-bubble: #221a16;
+  --bot-border: #382b23;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Base Utility Classes */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all 0.2s ease;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+/* Markdown Content Styling */
+.markdown-content p {
+  margin-bottom: 0.5rem;
+}
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+.markdown-content strong {
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+.markdown-content ul, .markdown-content ol {
+  margin-left: 1.25rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+.markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+}

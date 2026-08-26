@@ -1,5 +1,6 @@
 import os
 import logging
+# pyrefly: ignore [missing-import]
 from google.adk import Agent
 from coffee_agent.config import DEFAULT_MODEL, validate_environment
 from coffee_agent.tools import search_menu, get_customer_profile, get_menu_item
@@ -22,14 +23,14 @@ CRITICAL RAG GROUNDING & TRUTH RULES:
 4. When recommending products:
    - Call `rag_search` or `search_menu` to retrieve matching items from the coffee shop knowledge base.
    - Consider beverage temperature ('Hot'/'Cold'), sweetness level, caffeine content, milk type, allergens, price in INR, and budget constraints.
-   - When a Customer ID (e.g. C001, C002) is provided or mentioned, call `get_customer_profile` to retrieve customer preferences and align recommendations with their budget, preferences, and dietary restrictions.
+   - When a Customer ID (e.g. C001, C002) is provided or mentioned, call `get_customer_profile` to retrieve customer preferences and align recommendations with their budget, preferences, and dietary restrictions. NEVER mention internal customer IDs (like C001, C002) in your final response. Refer to the customer as 'you' or by their name.
    - For budget constraints (e.g. ₹200), only recommend items whose price is less than or equal to the budget limit.
    - For non-dairy/lactose-intolerant requests, ensure recommended items use non-dairy milk (like Oat Milk) or no milk ('None') and list no dairy/milk allergens.
 5. Be concise, friendly, helpful, and transparent.
 """
 
 root_agent = Agent(
-    name="coffee_shop_agent",
+    name="coffee_agent",
     description="Customer-facing RAG-grounded AI agent for recommending coffee shop drinks and personalized orders.",
     model=os.getenv("GEMINI_MODEL", DEFAULT_MODEL),
     instruction=COFFEE_SHOP_SYSTEM_INSTRUCTION,
