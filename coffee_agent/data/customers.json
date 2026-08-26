@@ -1,0 +1,50 @@
+[
+  {
+    "customer_id": "C001",
+    "name": "Mihir",
+    "preferred_temperature": "Cold",
+    "preferred_sweetness": "High",
+    "preferred_milk": "Oat Milk",
+    "caffeine_preference": "Medium",
+    "budget_inr": 250,
+    "likes": ["Cold Coffee", "Vanilla Syrup", "Frappe"],
+    "dislikes": ["Very bitter drinks", "Whole Milk / Dairy"],
+    "dietary_restrictions": ["Dairy-Free", "Lactose Intolerant"]
+  },
+  {
+    "customer_id": "C002",
+    "name": "Ananya",
+    "preferred_temperature": "Hot",
+    "preferred_sweetness": "Low",
+    "preferred_milk": "Whole Milk",
+    "caffeine_preference": "High",
+    "budget_inr": 200,
+    "likes": ["Strong Espresso", "Americano", "Cappuccino"],
+    "dislikes": ["Overly sweet syrups", "Whipped cream"],
+    "dietary_restrictions": []
+  },
+  {
+    "customer_id": "C003",
+    "name": "Rahul",
+    "preferred_temperature": "Cold",
+    "preferred_sweetness": "Low",
+    "preferred_milk": "None",
+    "caffeine_preference": "High",
+    "budget_inr": 180,
+    "likes": ["Iced Americano", "Cold brew", "Black coffee"],
+    "dislikes": ["Dairy milk", "Sugar", "Caramel drizzle"],
+    "dietary_restrictions": ["Dairy-Free"]
+  },
+  {
+    "customer_id": "C004",
+    "name": "Priya",
+    "preferred_temperature": "Hot",
+    "preferred_sweetness": "High",
+    "preferred_milk": "Whole Milk",
+    "caffeine_preference": "None",
+    "budget_inr": 220,
+    "likes": ["Hot Chocolate", "Green Tea", "Creamy drinks"],
+    "dislikes": ["Coffee beans", "Caffeine", "Bitterness"],
+    "dietary_restrictions": ["Caffeine-Free"]
+  }
+]
