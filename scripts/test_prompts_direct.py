@@ -1,10 +1,14 @@
 import asyncio
 import os
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.stdout.reconfigure(encoding="utf-8")
 
+from coffee_agent.config import validate_environment
 from coffee_agent.agent import root_agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService

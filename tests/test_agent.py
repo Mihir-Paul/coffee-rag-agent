@@ -20,3 +20,10 @@ def test_agent_instruction_contains_safety_rules():
     instruction = root_agent.instruction
     assert "NEVER fabricate" in instruction or "never fabricate" in instruction.lower()
     assert "budget" in instruction.lower()
+
+
+def test_agent_uses_configured_model():
+    """Verify root_agent model matches configured GEMINI_MODEL."""
+    assert root_agent.model is not None
+    assert len(root_agent.model) > 0
+

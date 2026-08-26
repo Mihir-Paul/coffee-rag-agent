@@ -27,13 +27,23 @@ class CoffeeShopRagEngine:
 
     def __init__(self, kb_dir: Optional[Path] = None):
         self.kb_dir = kb_dir or KB_DIR
-        self.client = genai.Client()
+        self._client = None
         self.documents: List[Dict[str, Any]] = []
         self.embeddings: Optional[np.ndarray] = None
         self.project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
         self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
         self.rag_corpus_name = os.getenv("RAG_CORPUS_NAME")
         self._load_and_index_documents()
+
+    @property
+    def client(self):
+        if self._client is None:
+            api_key = os.getenv("GEMINI_API_KEY")
+            if api_key and not api_key.startswith("your_"):
+                self._client = genai.Client(api_key=api_key)
+            else:
+                self._client = genai.Client()
+        return self._client
 
     def _load_and_index_documents(self) -> None:
         """Load markdown documents from knowledge base and compute vector embeddings."""
@@ -61,6 +71,11 @@ class CoffeeShopRagEngine:
         self.documents = chunks
         logger.info(f"Loaded {len(self.documents)} knowledge base chunks from {len(kb_files)} files.")
 
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key.startswith("your_"):
+            logger.warning("GEMINI_API_KEY not configured or placeholder detected. Vector embedding generation skipped.")
+            return
+
         if self.documents:
             try:
                 texts = [doc["text"] for doc in self.documents]
@@ -72,11 +87,12 @@ class CoffeeShopRagEngine:
                     )
                     vectors.append(res.embeddings[0].values)
                 
-                self.embeddings = np.array(vectors, dtype=np.float32)
-                norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
-                norms[norms == 0] = 1.0
-                self.embeddings = self.embeddings / norms
-                logger.info("Successfully generated vector embeddings for knowledge base chunks.")
+                if vectors:
+                    self.embeddings = np.array(vectors, dtype=np.float32)
+                    norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+                    norms[norms == 0] = 1.0
+                    self.embeddings = self.embeddings / norms
+                    logger.info("Successfully generated vector embeddings for knowledge base chunks.")
             except Exception as e:
                 logger.warning(f"Failed to generate vector embeddings: {e}")
 
@@ -118,38 +134,77 @@ class CoffeeShopRagEngine:
                 logger.debug(f"Vertex AI RAG query unavailable, using vector index: {e}")
 
         # Gemini Vector Embeddings RAG fallback
-        if self.embeddings is None or len(self.documents) == 0:
+        if self.embeddings is not None and len(self.documents) > 0:
+            try:
+                res = self.client.models.embed_content(
+                    model=EMBEDDING_MODEL,
+                    contents=query_text
+                )
+                q_vec = np.array(res.embeddings[0].values, dtype=np.float32)
+                q_norm = np.linalg.norm(q_vec)
+                if q_norm > 0:
+                    q_vec = q_vec / q_norm
+
+                similarities = np.dot(self.embeddings, q_vec)
+                top_indices = np.argsort(similarities)[::-1][:top_k]
+
+                results = []
+                for idx in top_indices:
+                    score = float(similarities[idx])
+                    # Strict thresholding to prevent hallucination on non-existent items
+                    if score >= SIMILARITY_THRESHOLD:
+                        results.append({
+                            "file": self.documents[idx]["file"],
+                            "path": self.documents[idx]["path"],
+                            "text": self.documents[idx]["text"],
+                            "score": score,
+                            "source": "gemini_embedding_vector_store"
+                        })
+                if results:
+                    return results
+            except Exception as e:
+                logger.error(f"Error during RAG vector search query: {e}")
+
+        # Local document text keyword search fallback
+        if not self.documents:
             return []
 
-        try:
-            res = self.client.models.embed_content(
-                model=EMBEDDING_MODEL,
-                contents=query_text
-            )
-            q_vec = np.array(res.embeddings[0].values, dtype=np.float32)
-            q_norm = np.linalg.norm(q_vec)
-            if q_norm > 0:
-                q_vec = q_vec / q_norm
+        import string
+        stop_words = {"what", "is", "the", "of", "and", "in", "for", "a", "to", "are", "you", "do", "have", "can", "i", "what's", "what is", "about"}
+        clean_text = query_text.translate(str.maketrans("", "", string.punctuation)).lower()
+        query_words = [w for w in clean_text.split() if w not in stop_words and len(w) > 1]
+        if not query_words:
+            query_words = [clean_text.strip()]
 
-            similarities = np.dot(self.embeddings, q_vec)
-            top_indices = np.argsort(similarities)[::-1][:top_k]
+        # Combine all document texts to check term existence in KB
+        all_kb_text = " ".join([doc["text"].lower() for doc in self.documents])
 
-            results = []
-            for idx in top_indices:
-                score = float(similarities[idx])
-                # Strict thresholding to prevent hallucination on non-existent items
-                if score >= SIMILARITY_THRESHOLD:
-                    results.append({
-                        "file": self.documents[idx]["file"],
-                        "path": self.documents[idx]["path"],
-                        "text": self.documents[idx]["text"],
-                        "score": score,
-                        "source": "gemini_embedding_vector_store"
-                    })
-            return results
-        except Exception as e:
-            logger.error(f"Error during RAG vector search query: {e}")
-            return []
+        # If any query term (excluding numbers/short words) is absent from the entire KB, return no matches
+        for w in query_words:
+            if len(w) > 3 and not w.isdigit() and w not in all_kb_text:
+                logger.debug(f"Query term '{w}' not present in knowledge base. Returning no match.")
+                return []
+
+        scored_chunks = []
+        for doc in self.documents:
+            text_lower = doc["text"].lower()
+            matches_count = sum(1 for w in query_words if w in text_lower)
+            if matches_count > 0:
+                score = matches_count / len(query_words)
+                scored_chunks.append((score, doc))
+
+        scored_chunks.sort(key=lambda x: x[0], reverse=True)
+        results = []
+        for score, doc in scored_chunks[:top_k]:
+            if score >= 0.35:
+                results.append({
+                    "file": doc["file"],
+                    "path": doc["path"],
+                    "text": doc["text"],
+                    "score": score,
+                    "source": "keyword_matching_fallback"
+                })
+        return results
 
     def get_grounded_context(self, query_text: str) -> str:
         """Retrieve and format grounded context string for prompt integration."""

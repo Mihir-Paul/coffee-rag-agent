@@ -1,9 +1,16 @@
 import os
-# pyrefly: ignore [missing-import]
+import logging
 from google.adk import Agent
-from coffee_agent.config import DEFAULT_MODEL
+from coffee_agent.config import DEFAULT_MODEL, validate_environment
 from coffee_agent.tools import search_menu, get_customer_profile, get_menu_item
 from coffee_agent.rag import rag_search
+
+logger = logging.getLogger(__name__)
+
+# Validate environment variables
+is_valid, env_msg = validate_environment()
+if not is_valid:
+    logger.warning(f"Environment configuration warning: {env_msg}")
 
 COFFEE_SHOP_SYSTEM_INSTRUCTION = """\
 You are a personalized, RAG-grounded coffee-shop AI assistant.
@@ -24,7 +31,8 @@ CRITICAL RAG GROUNDING & TRUTH RULES:
 root_agent = Agent(
     name="coffee_shop_agent",
     description="Customer-facing RAG-grounded AI agent for recommending coffee shop drinks and personalized orders.",
-    model=DEFAULT_MODEL,
+    model=os.getenv("GEMINI_MODEL", DEFAULT_MODEL),
     instruction=COFFEE_SHOP_SYSTEM_INSTRUCTION,
     tools=[search_menu, get_customer_profile, get_menu_item, rag_search]
 )
+
