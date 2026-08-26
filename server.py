@@ -1,10 +1,12 @@
 import os
 import sys
+import re
 import json
 import asyncio
 import logging
 from typing import Optional, List, Dict, Any
 from pathlib import Path
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,15 +14,21 @@ load_dotenv()
 # Ensure coffee_agent package is discoverable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException, Request, status
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 
 from coffee_agent.config import validate_environment, MENU_FILE_PATH
 from coffee_agent.agent import root_agent
 from coffee_agent.rag import rag_engine
+# pyrefly: ignore [missing-import]
 from google.adk.runners import Runner
+# pyrefly: ignore [missing-import]
 from google.adk.sessions import InMemorySessionService
+# pyrefly: ignore [missing-import]
 from google.genai import types
 
 logging.basicConfig(level=logging.INFO)
@@ -230,5 +238,6 @@ async def print_startup_banner():
 
 
 if __name__ == "__main__":
+    # pyrefly: ignore [missing-import]
     import uvicorn
     uvicorn.run("server:app", host="127.0.0.1", port=PORT, reload=False)
