@@ -1,0 +1,29 @@
+# Environment & Secrets
+.env
+.env.local
+*.env
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+
+# ADK & Local artifacts
+.adk/
+*.log
+scratch/
