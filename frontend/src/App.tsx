@@ -241,7 +241,7 @@ export default function App() {
                 width: '40px',
                 height: '40px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #c87a37, #8c4e23)',
+                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -420,7 +420,7 @@ export default function App() {
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700 }}>
                 CoffeeMind AI
               </h2>
-              <span style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', fontWeight: 600 }}>● RAG-Grounded Assistant</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 600 }}>● RAG-Grounded Assistant</span>
             </div>
           </div>
 
@@ -450,7 +450,7 @@ export default function App() {
               width: '56px',
               height: '56px',
               borderRadius: '16px',
-              background: 'linear-gradient(135deg, #c87a37, #8c4e23)',
+              background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -536,15 +536,15 @@ export default function App() {
                 <div style={{
                   padding: '1rem 1.25rem',
                   borderRadius: msg.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                  backgroundColor: msg.sender === 'user' ? 'var(--user-bubble)' : (msg.isError ? 'rgba(239, 68, 68, 0.1)' : 'var(--bot-bubble)'),
+                  backgroundColor: msg.sender === 'user' ? 'var(--user-bubble)' : (msg.isError ? 'var(--bg-secondary)' : 'var(--bot-bubble)'),
                   color: msg.sender === 'user' ? 'var(--user-text)' : 'var(--text-primary)',
-                  border: msg.sender === 'user' ? 'none' : (msg.isError ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--bot-border)'),
+                  border: msg.sender === 'user' ? 'none' : (msg.isError ? '1px solid var(--danger)' : '1px solid var(--bot-border)'),
                   boxShadow: 'var(--shadow-sm)',
                   fontSize: '0.925rem',
                   lineHeight: '1.6'
                 }}>
                   {msg.isError && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', marginBottom: '0.4rem', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)', marginBottom: '0.4rem', fontWeight: 600 }}>
                       <ShieldAlert size={18} />
                       <span>Notice</span>
                     </div>
@@ -607,7 +607,7 @@ export default function App() {
                               padding: '0.15rem 0.45rem',
                               borderRadius: '4px',
                               backgroundColor: rec.temperature === 'Hot' ? 'rgba(225, 29, 72, 0.1)' : 'rgba(14, 165, 233, 0.1)',
-                              color: rec.temperature === 'Hot' ? '#e11d48' : '#0ea5e9',
+                              color: rec.temperature === 'Hot' ? 'var(--danger)' : 'var(--accent-primary)',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.2rem'
@@ -644,7 +644,7 @@ export default function App() {
                               padding: '0.15rem 0.45rem',
                               borderRadius: '4px',
                               backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                              color: '#16a34a'
+                              color: 'var(--success)'
                             }}>
                               Milk: {rec.milk}
                             </span>
