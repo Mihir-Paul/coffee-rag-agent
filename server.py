@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 # pyrefly: ignore [missing-import]
@@ -39,11 +40,27 @@ is_valid, env_msg = validate_environment()
 if not is_valid:
     logger.warning(f"Backend environment warning: {env_msg}")
 
+from contextlib import asynccontextmanager
+
 PORT = int(os.getenv("PORT", 8000))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    rag_state = getattr(rag_engine, "rag_status", "available")
+    logger.info("==================================================")
+    logger.info(f"CoffeeMind backend started on port {PORT}")
+    logger.info(f"API: http://localhost:{PORT}")
+    logger.info(f"Model: {root_agent.model}")
+    logger.info(f"RAG: {rag_state}")
+    logger.info("==================================================")
+    yield
+
 
 app = FastAPI(
     title="CoffeeMind AI Backend",
-    description="Customer-facing API endpoint for CoffeeMind AI assistant powered by Google ADK and RAG."
+    description="Customer-facing API endpoint for CoffeeMind AI assistant powered by Google ADK and RAG.",
+    lifespan=lifespan
 )
 
 # Configurable CORS origins for development
@@ -148,7 +165,7 @@ async def chat_endpoint(payload: ChatRequest):
     
     adk_msg = types.Content(role="user", parts=[types.Part.from_text(text=user_msg)])
     
-    # Bounded retries with exponential backoff for 503 UNAVAILABLE high demand errors
+    # Bounded retries with exponential backoff ONLY for 503 UNAVAILABLE high demand errors
     max_retries = 3
     retry_delays = [2, 4, 8]
     
@@ -184,12 +201,15 @@ async def chat_endpoint(payload: ChatRequest):
         except Exception as e:
             err_msg = str(e)
 
-            # Categorize and log error types clearly
+            # Categorize and log error types clearly, returning structured API responses
             if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
-                logger.warning(f"Backend API Error: 429 = quota exhausted. Request failed.")
-                raise HTTPException(
+                logger.warning("Backend API Error: 429 = quota exhausted. Request failed.")
+                return JSONResponse(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail="AI service quota is temporarily unavailable. Please try again later."
+                    content={
+                        "error": "AI_QUOTA_EXHAUSTED",
+                        "message": "AI service usage limit reached."
+                    }
                 )
 
             elif "503" in err_msg or "UNAVAILABLE" in err_msg or "high demand" in err_msg:
@@ -199,42 +219,45 @@ async def chat_endpoint(payload: ChatRequest):
                     continue
                 else:
                     logger.error(f"Backend API Error: 503 = service unavailable after {max_retries} attempts.")
-                    raise HTTPException(
+                    return JSONResponse(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail="CoffeeMind is temporarily busy. Please try again."
+                        content={
+                            "error": "AI_TEMPORARILY_UNAVAILABLE",
+                            "message": "AI service is temporarily unavailable."
+                        }
                     )
 
-            elif "401" in err_msg or "403" in err_msg or "PERMISSION" in err_msg:
-                logger.error(f"Backend API Error: 401/403 = authentication/permission problem.")
-                raise HTTPException(
+            elif "401" in err_msg or "403" in err_msg or "PERMISSION" in err_msg or "UNAUTHENTICATED" in err_msg:
+                logger.error("Backend API Error: 401/403 = authentication/permission problem.")
+                return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Authentication error with AI provider."
+                    content={
+                        "error": "AI_AUTHENTICATION_ERROR",
+                        "message": "Authentication error with AI provider."
+                    }
                 )
 
             elif "404" in err_msg or "NOT_FOUND" in err_msg:
-                logger.error(f"Backend API Error: 404 = invalid model/resource.")
-                raise HTTPException(
+                logger.error("Backend API Error: 404 = invalid model/resource.")
+                return JSONResponse(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Selected Gemini model is currently unavailable."
+                    content={
+                        "error": "AI_MODEL_NOT_FOUND",
+                        "message": "Selected Gemini model is currently unavailable."
+                    }
                 )
 
             else:
                 logger.error(f"Backend API Error: 500 = application/server error: {err_msg}")
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Something went wrong. Please try again."
+                    content={
+                        "error": "INTERNAL_SERVER_ERROR",
+                        "message": "Something went wrong. Please try again."
+                    }
                 )
 
 
-@app.on_event("startup")
-async def print_startup_banner():
-    rag_state = getattr(rag_engine, "rag_status", "available")
-    logger.info("==================================================")
-    logger.info(f"CoffeeMind backend started on port {PORT}")
-    logger.info(f"API: http://localhost:{PORT}")
-    logger.info(f"Model: {root_agent.model}")
-    logger.info(f"RAG: {rag_state}")
-    logger.info("==================================================")
 
 
 if __name__ == "__main__":

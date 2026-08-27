@@ -132,12 +132,21 @@ export default function App() {
       });
 
       if (!res.ok) {
-        if (res.status === 429) {
-          throw new Error('AI usage limit reached. Please try again later.');
-        } else if (res.status === 503) {
-          throw new Error('CoffeeMind is temporarily busy. Please try again in a moment.');
+        let errData: any = {};
+        try {
+          errData = await res.json();
+        } catch (_) {}
+
+        if (res.status === 429 || errData.error === 'AI_QUOTA_EXHAUSTED') {
+          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.\n\nOur AI service has reached its current usage limit.');
+        } else if (res.status === 503 || errData.error === 'AI_TEMPORARILY_UNAVAILABLE') {
+          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.');
+        } else if (res.status === 403 || res.status === 401 || errData.error === 'AI_AUTHENTICATION_ERROR') {
+          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.');
+        } else if (res.status === 404 || errData.error === 'AI_MODEL_NOT_FOUND') {
+          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.');
         } else {
-          throw new Error('Something went wrong. Please try again.');
+          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.');
         }
       }
 
@@ -162,7 +171,7 @@ export default function App() {
     } catch (err: any) {
       console.error('Chat error:', err);
       
-      let errorDisplayMessage = err.message || 'Something went wrong. Please try again.';
+      let errorDisplayMessage = err.message || 'CoffeeMind is temporarily unavailable. Please try again later.';
       if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
         errorDisplayMessage = 'CoffeeMind is temporarily unavailable. Please check that the backend is running at http://localhost:8000.';
       }

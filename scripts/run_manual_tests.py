@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stdout, "reconfigure"):
+    getattr(sys.stdout, "reconfigure")(encoding="utf-8")
 
 from coffee_agent.config import validate_environment
 from coffee_agent.agent import root_agent
@@ -33,7 +34,7 @@ async def run_single_prompt(prompt_text: str):
     
     responses = []
     async for event in runner.run_async(user_id="test_user", session_id=sess.id, new_message=msg):
-        if event.content:
+        if event.content and event.content.parts:
             for part in event.content.parts:
                 if part.text:
                     responses.append(part.text)

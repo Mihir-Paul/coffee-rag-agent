@@ -82,6 +82,22 @@ def test_no_result_query_returns_empty_or_no_match():
 def test_anti_hallucination_rules():
     """Test 10: Root agent instructions contain strict RAG grounding rules."""
     instruction = root_agent.instruction
-    assert "RAG" in instruction or "retrieved" in instruction.lower()
-    assert "NEVER fabricate" in instruction or "never fabricate" in instruction.lower()
-    assert "rag_search" in [t.__name__ for t in root_agent.tools]
+    instruction_str = str(instruction)
+    if callable(instruction):
+        try:
+            instruction_str = str(instruction(None))  # type: ignore
+        except Exception:
+            instruction_str = str(instruction)
+
+    assert "RAG" in instruction_str or "retrieved" in instruction_str.lower()
+    assert "NEVER fabricate" in instruction_str or "never fabricate" in instruction_str.lower()
+
+    tool_names = []
+    for t in root_agent.tools:
+        if hasattr(t, "__name__"):
+            tool_names.append(t.__name__)
+        elif hasattr(t, "name"):
+            tool_names.append(t.name)
+        else:
+            tool_names.append(str(t))
+    assert "rag_search" in tool_names

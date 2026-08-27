@@ -117,7 +117,14 @@ class CoffeeShopRagEngine:
                     model=EMBEDDING_MODEL,
                     contents=text
                 )
-                vectors.append(res.embeddings[0].values)
+                vals = None
+                if hasattr(res, "embedding") and res.embedding is not None and hasattr(res.embedding, "values"):
+                    vals = res.embedding.values
+                elif hasattr(res, "embeddings") and res.embeddings and len(res.embeddings) > 0 and res.embeddings[0] is not None:
+                    vals = res.embeddings[0].values
+
+                if vals:
+                    vectors.append(vals)
             
             if vectors:
                 self.embeddings = np.array(vectors, dtype=np.float32)
@@ -165,11 +172,19 @@ class CoffeeShopRagEngine:
                 from vertexai import rag
 
                 vertexai.init(project=self.project_id, location=self.location)
-                response = rag.retrieval_query(
-                    text=query_text,
-                    rag_corpora=[self.rag_corpus_name],
-                    similarity_top_k=top_k
-                )
+                rag_resources = [rag.RagResource(rag_corpus=self.rag_corpus_name)] if hasattr(rag, "RagResource") else None
+                if rag_resources:
+                    response = rag.retrieval_query(
+                        text=query_text,
+                        rag_resources=rag_resources,
+                        similarity_top_k=top_k
+                    )
+                else:
+                    response = rag.retrieval_query(
+                        text=query_text,
+                        rag_corpora=[self.rag_corpus_name],  # type: ignore
+                        similarity_top_k=top_k  # type: ignore
+                    )
                 if response and hasattr(response, "contexts") and response.contexts.contexts:
                     results = []
                     for ctx in response.contexts.contexts:
@@ -189,27 +204,34 @@ class CoffeeShopRagEngine:
                     model=EMBEDDING_MODEL,
                     contents=query_text
                 )
-                q_vec = np.array(res.embeddings[0].values, dtype=np.float32)
-                q_norm = np.linalg.norm(q_vec)
-                if q_norm > 0:
-                    q_vec = q_vec / q_norm
+                vals = None
+                if hasattr(res, "embedding") and res.embedding is not None and hasattr(res.embedding, "values"):
+                    vals = res.embedding.values
+                elif hasattr(res, "embeddings") and res.embeddings and len(res.embeddings) > 0 and res.embeddings[0] is not None:
+                    vals = res.embeddings[0].values
 
-                similarities = np.dot(self.embeddings, q_vec)
-                top_indices = np.argsort(similarities)[::-1][:top_k]
+                if vals is not None:
+                    q_vec = np.array(vals, dtype=np.float32)
+                    q_norm = np.linalg.norm(q_vec)
+                    if q_norm > 0:
+                        q_vec = q_vec / q_norm
 
-                results = []
-                for idx in top_indices:
-                    score = float(similarities[idx])
-                    if score >= SIMILARITY_THRESHOLD:
-                        results.append({
-                            "file": self.documents[idx]["file"],
-                            "path": self.documents[idx]["path"],
-                            "text": self.documents[idx]["text"],
-                            "score": score,
-                            "source": "gemini_embedding_vector_store"
-                        })
-                if results:
-                    return results
+                    similarities = np.dot(self.embeddings, q_vec)
+                    top_indices = np.argsort(similarities)[::-1][:top_k]
+
+                    results = []
+                    for idx in top_indices:
+                        score = float(similarities[idx])
+                        if score >= SIMILARITY_THRESHOLD:
+                            results.append({
+                                "file": self.documents[idx]["file"],
+                                "path": self.documents[idx]["path"],
+                                "text": self.documents[idx]["text"],
+                                "score": score,
+                                "source": "gemini_embedding_vector_store"
+                            })
+                    if results:
+                        return results
             except Exception as e:
                 logger.warning(f"RAG vector query skipped/failed (using keyword fallback): {e}")
 
