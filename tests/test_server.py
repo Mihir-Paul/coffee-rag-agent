@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from server import app
 
 client = TestClient(app)
+AUTH_HEADERS = {"Authorization": "Bearer test-aarav-token"}
 
 
 def test_health_endpoint():
@@ -15,14 +16,14 @@ def test_health_endpoint():
 
 
 def test_chat_endpoint_empty_message():
-    response = client.post("/api/chat", json={"message": "   "})
+    response = client.post("/api/chat", json={"message": "   "}, headers=AUTH_HEADERS)
     assert response.status_code == 400
 
 
 @patch("server.runner.run_async")
 def test_chat_endpoint_429_quota_exhausted(mock_run):
     mock_run.side_effect = Exception("429 RESOURCE_EXHAUSTED: Quota exceeded for quota metric...")
-    response = client.post("/api/chat", json={"message": "What drinks do you have?"})
+    response = client.post("/api/chat", json={"message": "What drinks do you have?"}, headers=AUTH_HEADERS)
     assert response.status_code == 429
     data = response.json()
     assert data["error"] == "AI_QUOTA_EXHAUSTED"
@@ -32,7 +33,7 @@ def test_chat_endpoint_429_quota_exhausted(mock_run):
 @patch("server.runner.run_async")
 def test_chat_endpoint_503_temporarily_unavailable(mock_run):
     mock_run.side_effect = Exception("503 UNAVAILABLE: Model is overloaded")
-    response = client.post("/api/chat", json={"message": "What drinks do you have?"})
+    response = client.post("/api/chat", json={"message": "What drinks do you have?"}, headers=AUTH_HEADERS)
     assert response.status_code == 503
     data = response.json()
     assert data["error"] == "AI_TEMPORARILY_UNAVAILABLE"
@@ -42,7 +43,7 @@ def test_chat_endpoint_503_temporarily_unavailable(mock_run):
 @patch("server.runner.run_async")
 def test_chat_endpoint_403_authentication_error(mock_run):
     mock_run.side_effect = Exception("403 PERMISSION_DENIED: API key invalid")
-    response = client.post("/api/chat", json={"message": "What drinks do you have?"})
+    response = client.post("/api/chat", json={"message": "What drinks do you have?"}, headers=AUTH_HEADERS)
     assert response.status_code == 403
     data = response.json()
     assert data["error"] == "AI_AUTHENTICATION_ERROR"
@@ -52,7 +53,7 @@ def test_chat_endpoint_403_authentication_error(mock_run):
 @patch("server.runner.run_async")
 def test_chat_endpoint_404_model_not_found(mock_run):
     mock_run.side_effect = Exception("404 NOT_FOUND: Model not found")
-    response = client.post("/api/chat", json={"message": "What drinks do you have?"})
+    response = client.post("/api/chat", json={"message": "What drinks do you have?"}, headers=AUTH_HEADERS)
     assert response.status_code == 404
     data = response.json()
     assert data["error"] == "AI_MODEL_NOT_FOUND"

@@ -1,3 +1,26 @@
+export interface CustomerPreferences {
+  temperature: string;
+  sweetness: string;
+  milk_preference: string;
+  caffeine_preference: string;
+  budget: number;
+  dietary_restrictions: string[];
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  preferences: CustomerPreferences;
+}
+
+export interface ConversationSession {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CoffeeRecommendation {
   id: string;
   name: string;
@@ -26,3 +49,4 @@ export interface CustomerProfileOption {
   name: string;
   desc: string;
 }
+

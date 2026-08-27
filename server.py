@@ -15,14 +15,14 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # pyrefly: ignore [missing-import]
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.responses import JSONResponse
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 
-from coffee_agent.config import validate_environment, MENU_FILE_PATH
+from coffee_agent.config import validate_environment, log_config_status, PORT, MENU_FILE_PATH
 from coffee_agent.agent import root_agent
 from coffee_agent.rag import rag_engine
 # pyrefly: ignore [missing-import]
@@ -31,6 +31,13 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 # pyrefly: ignore [missing-import]
 from google.genai import types
+
+from coffee_agent.auth import (
+    verify_supabase_token, 
+    AuthenticatedUser, 
+    supabase_client,
+    _load_local_customers
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("coffee_backend")
@@ -42,19 +49,18 @@ if not is_valid:
 
 from contextlib import asynccontextmanager
 
-PORT = int(os.getenv("PORT", 8000))
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    log_config_status()
     rag_state = getattr(rag_engine, "rag_status", "available")
     logger.info("==================================================")
     logger.info(f"CoffeeMind backend started on port {PORT}")
     logger.info(f"API: http://localhost:{PORT}")
-    logger.info(f"Model: {root_agent.model}")
-    logger.info(f"RAG: {rag_state}")
+    logger.info(f"RAG Status: {rag_state}")
     logger.info("==================================================")
     yield
+    logger.info("CoffeeMind backend shutting down.")
 
 
 app = FastAPI(
@@ -102,7 +108,6 @@ runner = Runner(agent=root_agent, app_name="coffee_agent", session_service=sessi
 
 class ChatRequest(BaseModel):
     message: str
-    user_id: Optional[str] = "customer_1"
     session_id: Optional[str] = None
 
 
@@ -135,6 +140,32 @@ def extract_matching_recommendations(text: str) -> List[Dict[str, Any]]:
     return matches
 
 
+def generate_deterministic_title(message: str) -> str:
+    """Generate a clean, deterministic session title without extra LLM requests."""
+    clean = message.strip()
+    if not clean:
+        return "Coffee Session"
+
+    lower = clean.lower()
+    if "cold" in lower and "sweet" in lower:
+        return "Cold & Sweet Order"
+    elif "cold" in lower or "iced" in lower:
+        return "Cold Drink Recommendation"
+    elif "hot" in lower or "warm" in lower:
+        return "Hot Coffee Selection"
+    elif "dairy" in lower or "oat" in lower or "vegan" in lower:
+        return "Dietary & Non-Dairy Options"
+    elif "budget" in lower or "under" in lower or "price" in lower or "₹" in lower:
+        return "Budget Coffee Search"
+    elif "caffeine" in lower or "strong" in lower:
+        return "High Caffeine Order"
+
+    # Default to clean snippet of first prompt
+    words = clean.split()
+    snippet = " ".join(words[:4])
+    return snippet.capitalize() if snippet else "Coffee Session"
+
+
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
@@ -144,26 +175,180 @@ async def health_check():
         "rag": rag_state,
         "app": "CoffeeMind AI Backend",
         "agent": root_agent.name,
-        "model": root_agent.model
+        "model": root_agent.model,
+        "supabase": "connected" if supabase_client else "offline_fallback"
     }
 
 
+@app.get("/api/me")
+async def get_user_profile(auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Fetch current authenticated customer's profile & preferences without exposing internal customer IDs."""
+    preferences = {
+        "temperature": "Cold",
+        "sweetness": "Medium",
+        "milk_preference": "Oat Milk",
+        "caffeine_preference": "Medium",
+        "budget": 250.0,
+        "dietary_restrictions": []
+    }
+
+    # Fetch from Supabase DB if available
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            pref_res = supabase_client.table("customer_preferences").select("*").eq("customer_id", auth_user.db_customer_id).execute()
+            if pref_res.data and len(pref_res.data) > 0:
+                p = pref_res.data[0]
+                preferences = {
+                    "temperature": p.get("temperature", "Cold"),
+                    "sweetness": p.get("sweetness", "Medium"),
+                    "milk_preference": p.get("milk_preference", "Oat Milk"),
+                    "caffeine_preference": p.get("caffeine_preference", "Medium"),
+                    "budget": float(p.get("budget", 250)),
+                    "dietary_restrictions": p.get("dietary_restrictions", [])
+                }
+        except Exception as e:
+            logger.warning(f"Failed to fetch preferences from Supabase: {e}")
+    else:
+        # Fallback to local customers.json
+        local = _load_local_customers()
+        found = next((c for c in local if c.get("customer_id") == auth_user.internal_customer_id), None)
+        if found:
+            preferences = {
+                "temperature": found.get("preferred_temperature", "Cold"),
+                "sweetness": found.get("preferred_sweetness", "Medium"),
+                "milk_preference": found.get("preferred_milk", "Oat Milk"),
+                "caffeine_preference": found.get("caffeine_preference", "Medium"),
+                "budget": float(found.get("budget_inr", 250)),
+                "dietary_restrictions": found.get("dietary_restrictions", [])
+            }
+
+    return {
+        "id": auth_user.auth_user_id,
+        "name": auth_user.name,
+        "email": auth_user.email,
+        "preferences": preferences
+    }
+
+
+@app.get("/api/conversations")
+async def get_conversations(auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Fetch authenticated user's conversations strictly isolated by ownership."""
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            res = supabase_client.table("conversations").select("*").eq("customer_id", auth_user.db_customer_id).order("updated_at", desc=True).execute()
+            return {"conversations": res.data or []}
+        except Exception as e:
+            logger.error(f"Error fetching conversations from Supabase: {e}")
+
+    # Offline/Mock fallback
+    return {
+        "conversations": [
+            {
+                "id": "session-default-1",
+                "title": "Current Coffee Session",
+                "created_at": "2026-08-27T10:00:00Z",
+                "updated_at": "2026-08-27T10:00:00Z"
+            }
+        ]
+    }
+
+
+@app.post("/api/conversations")
+async def create_conversation(auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Create a new conversation session for the authenticated user."""
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            res = supabase_client.table("conversations").insert({
+                "customer_id": auth_user.db_customer_id,
+                "title": "New Coffee Session"
+            }).execute()
+            if res.data:
+                return res.data[0]
+        except Exception as e:
+            logger.error(f"Failed to create conversation in Supabase: {e}")
+
+    # Fallback return
+    owner_id = (auth_user.db_customer_id or "c001").lower()
+    new_id = f"conv-{owner_id}-{int(asyncio.get_event_loop().time() * 1000)}"
+    return {
+        "id": new_id,
+        "title": "New Coffee Session",
+        "created_at": "2026-08-27T10:00:00Z",
+        "updated_at": "2026-08-27T10:00:00Z"
+    }
+
+
+@app.get("/api/conversations/{conversation_id}/messages")
+async def get_conversation_messages(conversation_id: str, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Fetch messages for a specific conversation with strict ownership verification."""
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            # Verify user owns the conversation first
+            conv = supabase_client.table("conversations").select("*").eq("id", conversation_id).eq("customer_id", auth_user.db_customer_id).execute()
+            if not conv.data:
+                raise HTTPException(status_code=403, detail="Access denied. You do not own this conversation.")
+
+            res = supabase_client.table("messages").select("*").eq("conversation_id", conversation_id).order("created_at", desc=False).execute()
+            return {"messages": res.data or []}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to load messages from Supabase: {e}")
+
+    # Fallback / offline mode ownership verification
+    owner_id = (auth_user.db_customer_id or "c001").lower()
+    if conversation_id.startswith("conv-") and not conversation_id.startswith(f"conv-{owner_id}-"):
+        raise HTTPException(status_code=403, detail="Access denied. You do not own this conversation.")
+
+    return {"messages": []}
+
+
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat_endpoint(payload: ChatRequest):
+async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Secured chat endpoint verified via Supabase JWT token.
+    Uses authenticated user's mapped internal customer ID for ADK context."""
+
     user_msg = payload.message.strip()
     if not user_msg:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
     
-    user_id = payload.user_id or "customer_1"
+    # Internal customer ID resolved securely on server-side (NEVER trusted from client payload)
+    internal_customer_id = auth_user.internal_customer_id
     
-    # Create or retrieve session
-    if payload.session_id:
+    # Resolve or create conversation session
+    if payload.session_id and payload.session_id != "null":
         session_id = payload.session_id
     else:
-        session = await session_service.create_session(app_name="coffee_agent", user_id=user_id)
+        # Create session in ADK
+        session = await session_service.create_session(app_name="coffee_agent", user_id=internal_customer_id)
         session_id = session.id
-    
-    adk_msg = types.Content(role="user", parts=[types.Part.from_text(text=user_msg)])
+
+        # Persist conversation record in Supabase DB
+        if supabase_client and auth_user.db_customer_id:
+            try:
+                title = generate_deterministic_title(user_msg)
+                conv = supabase_client.table("conversations").insert({
+                    "id": session_id,
+                    "customer_id": auth_user.db_customer_id,
+                    "title": title
+                }).execute()
+            except Exception as e:
+                logger.warning(f"Could not insert conversation into Supabase DB: {e}")
+
+    # Persist incoming user message to Supabase DB if available
+    if supabase_client:
+        try:
+            supabase_client.table("messages").insert({
+                "conversation_id": session_id,
+                "role": "user",
+                "content": user_msg
+            }).execute()
+        except Exception as e:
+            logger.warning(f"Failed to save user message to DB: {e}")
+
+    # Format user message for ADK runner
+    effective_query = f"[Customer profile {internal_customer_id}] {user_msg}"
+    adk_msg = types.Content(role="user", parts=[types.Part.from_text(text=effective_query)])
     
     # Bounded retries with exponential backoff ONLY for 503 UNAVAILABLE high demand errors
     max_retries = 3
@@ -172,7 +357,7 @@ async def chat_endpoint(payload: ChatRequest):
     for attempt in range(1, max_retries + 1):
         try:
             response_parts = []
-            async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=adk_msg):
+            async for event in runner.run_async(user_id=internal_customer_id, session_id=session_id, new_message=adk_msg):
                 if event.content and event.content.parts:
                     for p in event.content.parts:
                         if p.text:
@@ -191,6 +376,24 @@ async def chat_endpoint(payload: ChatRequest):
 
             recommendations = extract_matching_recommendations(full_text)
             
+            # Persist AI assistant response to Supabase DB
+            if supabase_client:
+                try:
+                    supabase_client.table("messages").insert({
+                        "conversation_id": session_id,
+                        "role": "assistant",
+                        "content": full_text,
+                        "recommendations": recommendations
+                    }).execute()
+
+                    # Update conversation title / updated_at
+                    title = generate_deterministic_title(user_msg)
+                    supabase_client.table("conversations").update({
+                        "title": title
+                    }).eq("id", session_id).execute()
+                except Exception as e:
+                    logger.warning(f"Failed to save assistant message to DB: {e}")
+
             return ChatResponse(
                 response=full_text,
                 recommendations=recommendations,
@@ -258,9 +461,15 @@ async def chat_endpoint(payload: ChatRequest):
                 )
 
 
-
-
 if __name__ == "__main__":
-    # pyrefly: ignore [missing-import]
     import uvicorn
-    uvicorn.run("server:app", host="127.0.0.1", port=PORT, reload=False)
+    log_config_status()
+    is_dev = os.getenv("ENV", "development").lower() != "production"
+    uvicorn.run(
+        "server:app",
+        host="127.0.0.1",
+        port=PORT,
+        reload=is_dev,
+        reload_includes=["*.py", ".env", ".env.*"] if is_dev else None
+    )
+

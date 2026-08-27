@@ -61,13 +61,18 @@ def setup_vertex_ai_rag() -> bool:
             )
             logger.info(f"Successfully created Corpus: {target_corpus.name}")
 
+        if not target_corpus or not target_corpus.name:
+            logger.error("Failed to obtain a valid Vertex AI RAG Corpus.")
+            return False
+
+        corpus_name: str = target_corpus.name
         kb_files = get_kb_files()
         uploaded_count = 0
 
         for filepath in kb_files:
             try:
                 rag.upload_file(
-                    corpus_name=target_corpus.name,
+                    corpus_name=corpus_name,
                     path=str(filepath),
                     display_name=filepath.name,
                     description=f"Knowledge document: {filepath.relative_to(KB_DIR)}"
@@ -77,7 +82,7 @@ def setup_vertex_ai_rag() -> bool:
             except Exception as e:
                 logger.warning(f"File upload to Vertex RAG failed for {filepath.name}: {e}")
 
-        logger.info(f"Vertex AI RAG Setup complete. Corpus Resource Name: {target_corpus.name}")
+        logger.info(f"Vertex AI RAG Setup complete. Corpus Resource Name: {corpus_name}")
         return True
 
     except Exception as e:

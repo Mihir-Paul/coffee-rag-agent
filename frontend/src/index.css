@@ -11,6 +11,16 @@
   --bg-sidebar: #F1E4CF;
   --sidebar-text: #2B1B10;
   --sidebar-hover: #EAD9BC;
+  --sidebar-text-muted: #7E6B58;
+  --sidebar-border: #E4D4BB;
+
+  --session-card-bg: #F8F0E3;
+  --session-card-border: #E4D4BB;
+  --session-card-hover-bg: #F0E3D1;
+  --session-card-hover-border: #D6C2A7;
+  --session-card-active-bg: #EBD6C3;
+  --session-card-active-border: #B85C2C;
+  --session-card-active-text: #2B1B10;
 
   --text-primary: #2B1B10;
   --text-secondary: #6B5642;
@@ -43,6 +53,16 @@
   --bg-sidebar: #2A1D15;
   --sidebar-text: #F5EAD9;
   --sidebar-hover: #35261C;
+  --sidebar-text-muted: #9A877A;
+  --sidebar-border: #3A2B20;
+
+  --session-card-bg: #221711;
+  --session-card-border: #3A2B20;
+  --session-card-hover-bg: #302118;
+  --session-card-hover-border: #4A382C;
+  --session-card-active-bg: #382419;
+  --session-card-active-border: #D97D3D;
+  --session-card-active-text: #F5EAD9;
 
   --text-primary: #F5EAD9;
   --text-secondary: #B9A48C;
@@ -148,4 +168,106 @@ input, textarea {
   font-weight: 700;
   margin-top: 0.75rem;
   margin-bottom: 0.35rem;
+}
+
+/* Sidebar Components & Utility Classes */
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.725rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sidebar-text-muted);
+  margin-bottom: 0.65rem;
+}
+
+.session-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background-color: var(--session-card-bg);
+  border: 1px solid var(--session-card-border);
+  color: var(--sidebar-text);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  outline: none;
+}
+
+.session-card:hover {
+  background-color: var(--session-card-hover-bg);
+  border-color: var(--session-card-hover-border);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(43, 27, 16, 0.06);
+}
+
+.session-card:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.session-card.active {
+  background-color: var(--session-card-active-bg);
+  border-color: var(--session-card-active-border);
+  box-shadow: 0 2px 8px rgba(184, 92, 44, 0.1);
+}
+
+.session-card-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(184, 92, 44, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+[data-theme='dark'] .session-card-icon-wrapper {
+  background: rgba(217, 125, 61, 0.15);
+}
+
+.session-card.active .session-card-icon-wrapper {
+  background: rgba(184, 92, 44, 0.2);
+}
+
+.preference-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background-color: var(--session-card-bg);
+  border: 1px solid var(--session-card-border);
+  color: var(--sidebar-text);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.preference-card:hover {
+  background-color: var(--session-card-hover-bg);
+  border-color: var(--session-card-hover-border);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(43, 27, 16, 0.06);
+}
+
+.preference-card:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.preference-card.active {
+  background-color: var(--session-card-active-bg);
+  border-color: var(--session-card-active-border);
+  box-shadow: 0 2px 8px rgba(184, 92, 44, 0.1);
 }

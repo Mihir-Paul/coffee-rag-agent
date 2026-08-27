@@ -16,7 +16,7 @@ def test_rag_corpus_configuration():
 def test_knowledge_base_ingestion():
     """Test 2: Verify knowledge base contains structured markdown documents across categories."""
     engine = CoffeeShopRagEngine()
-    files = [doc["file"] for doc in engine.documents]
+    files = [doc.metadata["file"] if hasattr(doc, "metadata") else doc.get("file", "") for doc in engine.documents]
     assert any("coffee_menu.md" in f for f in files)
     assert any("cold_drinks.md" in f for f in files)
     assert any("dietary_information.md" in f for f in files)
