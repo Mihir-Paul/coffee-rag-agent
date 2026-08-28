@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { Coffee, Mail, Lock, User, LogIn, UserPlus, AlertCircle, ArrowRight } from 'lucide-react';
+import { 
+  Coffee, 
+  User, 
+  AlertCircle, 
+  ArrowRight,
+  Code2 
+} from 'lucide-react';
+import { GrainGradient } from "@paper-design/shaders-react";
 import { supabase } from '../supabaseClient';
 
 interface AuthModalProps {
@@ -7,7 +14,7 @@ interface AuthModalProps {
 }
 
 const GoogleIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+  <svg width="16" height="16" viewBox="0 0 24 24" className="shrink-0" aria-hidden="true">
     <path
       fill="#4285F4"
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -27,17 +34,67 @@ const GoogleIcon = () => (
   </svg>
 );
 
+/* Signature Visual Element: Espresso Machine Pressure Gauge Dial */
+const EspressoPressureGauge = () => {
+  return (
+    <div className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center shrink-0">
+      {/* SVG Arc Gauge */}
+      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+        {/* Track */}
+        <circle
+          cx="60"
+          cy="60"
+          r="48"
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.1)"
+          strokeWidth="7"
+          strokeDasharray="226 75"
+          strokeLinecap="round"
+        />
+        {/* Highlighted Ember Extraction Arc */}
+        <circle
+          cx="60"
+          cy="60"
+          r="48"
+          fill="none"
+          stroke="#E05A10"
+          strokeWidth="7"
+          strokeDasharray="170 130"
+          strokeDashoffset="0"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* Dial Center Reading */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <span className="text-3xl sm:text-4xl font-bold font-sans tracking-tight text-white">
+          9.0
+        </span>
+        <span className="text-[10px] tracking-widest font-semibold text-[#E05A10] uppercase mt-0.5">
+          BAR PRESSURE
+        </span>
+        <span className="text-[9px] text-white/50 tracking-wider uppercase mt-1">
+          Optimal Zone
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingType, setLoadingType] = useState<'google' | 'email' | 'demo-aarav' | 'demo-priya' | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showDevPanel, setShowDevPanel] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
     setLoading(true);
+    setLoadingType('google');
     try {
       console.log('Google OAuth initiated');
       const { error } = await supabase.auth.signInWithOAuth({
@@ -51,11 +108,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
       console.error('Google Sign-In error:', err);
       let msg = err.message || 'Google Sign-In failed.';
       if (msg.includes('provider is not enabled') || msg.includes('Unsupported provider')) {
-        msg = 'Google Sign-In is not enabled in your Supabase Dashboard. Please enable the Google Provider under Authentication -> Providers -> Google.';
+        msg = 'Google Sign-In is not enabled in your Supabase Dashboard. Please enable Google Provider under Authentication -> Providers -> Google.';
       }
       setErrorMsg(msg);
     } finally {
       setLoading(false);
+      setLoadingType(null);
     }
   };
 
@@ -74,6 +132,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
     }
 
     setLoading(true);
+    setLoadingType('email');
 
     try {
       if (isSignUp) {
@@ -113,31 +172,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
       setErrorMsg(friendlyMessage);
     } finally {
       setLoading(false);
+      setLoadingType(null);
     }
   };
 
   const handleDemoSignIn = async (demoName: 'Aarav' | 'Priya') => {
     setErrorMsg(null);
     setLoading(true);
+    setLoadingType(demoName === 'Aarav' ? 'demo-aarav' : 'demo-priya');
     const demoEmail = demoName === 'Aarav' ? 'aarav@coffeemind.ai' : 'priya@coffeemind.ai';
     const demoPass = 'coffeemind123';
 
     try {
-      // Try signing in with demo account
       const { error } = await supabase.auth.signInWithPassword({
         email: demoEmail,
         password: demoPass
       });
 
       if (error) {
-        // Create demo user if not registered yet
         const signUpRes = await supabase.auth.signUp({
           email: demoEmail,
           password: demoPass,
           options: { data: { name: demoName } }
         });
         if (signUpRes.error) {
-          // If Supabase network isn't configured, use local storage session token
           localStorage.setItem('coffeemind_mock_token', demoName === 'Aarav' ? 'test-aarav-token' : 'test-priya-token');
           window.location.reload();
           return;
@@ -145,333 +203,290 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
       }
       if (onAuthSuccess) onAuthSuccess();
     } catch (err) {
-      // Local fallback for offline/demo testing
       localStorage.setItem('coffeemind_mock_token', demoName === 'Aarav' ? 'test-aarav-token' : 'test-priya-token');
       window.location.reload();
     } finally {
       setLoading(false);
+      setLoadingType(null);
     }
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(27, 18, 13, 0.85)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 100,
-      padding: '1.5rem'
-    }}>
-      <div style={{
-        backgroundColor: 'var(--bg-primary)',
-        border: '1px solid var(--card-border)',
-        borderRadius: '16px',
-        width: '100%',
-        maxWidth: '440px',
-        padding: '2rem',
-        boxShadow: 'var(--shadow-lg)',
-        animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-      }}>
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F5EFEB] dark:bg-[#14100D] font-sans antialiased text-[#2A1810] dark:text-[#F0EADF]">
+      
+      {/* LEFT PANEL (~45% width, Warm Parchment Background, Collapses under 880px) */}
+      <div className="w-full min-[880px]:w-[45%] h-full p-8 sm:p-12 lg:p-14 flex flex-col justify-between overflow-y-auto bg-[#F5EFEB] dark:bg-[#14100D]">
         
-        {/* Header Icon & Brand */}
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1rem auto',
-            boxShadow: '0 6px 16px rgba(184, 92, 44, 0.35)'
-          }}>
-            <Coffee size={30} color="#ffffff" />
-          </div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            {isSignUp ? 'Join CoffeeMind AI' : 'Welcome Back'}
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            {isSignUp ? 'Create an account for personalized coffee recommendations' : 'Sign in to access your personal coffee assistant & chat history'}
-          </p>
-        </div>
-
-        {/* Tab Switcher */}
-        <div style={{
-          display: 'flex',
-          backgroundColor: 'var(--bg-secondary)',
-          borderRadius: '10px',
-          padding: '4px',
-          marginBottom: '1.5rem'
-        }}>
-          <button
-            type="button"
-            onClick={() => { setIsSignUp(false); setErrorMsg(null); }}
-            style={{
-              flex: 1,
-              padding: '0.5rem 0',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              backgroundColor: !isSignUp ? 'var(--bg-card)' : 'transparent',
-              color: !isSignUp ? 'var(--text-primary)' : 'var(--text-muted)',
-              boxShadow: !isSignUp ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setIsSignUp(true); setErrorMsg(null); }}
-            style={{
-              flex: 1,
-              padding: '0.5rem 0',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              backgroundColor: isSignUp ? 'var(--bg-card)' : 'transparent',
-              color: isSignUp ? 'var(--text-primary)' : 'var(--text-muted)',
-              boxShadow: isSignUp ? 'var(--shadow-sm)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Create Account
-          </button>
-        </div>
-
-        {/* Error Alert */}
-        {errorMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            backgroundColor: 'rgba(168, 63, 44, 0.1)',
-            border: '1px solid var(--danger)',
-            borderRadius: '8px',
-            padding: '0.75rem',
-            marginBottom: '1.25rem',
-            color: 'var(--danger)',
-            fontSize: '0.825rem'
-          }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* Google Sign In Button */}
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '0.7rem 1rem',
-            borderRadius: '10px',
-            border: '1px solid var(--border-color)',
-            backgroundColor: 'var(--bg-card)',
-            color: 'var(--text-primary)',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.65rem',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            boxShadow: 'var(--shadow-sm)',
-            transition: 'all 0.2s ease',
-            marginBottom: '1.25rem'
-          }}
-        >
-          <GoogleIcon />
-          <span>Continue with Google</span>
-        </button>
-
-        {/* Divider */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '1.25rem'
-        }}>
-          <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0 0.65rem', fontWeight: 500 }}>
-            or with email
-          </span>
-          <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }} />
-        </div>
-
-        {/* Auth Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {isSignUp && (
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Full Name
-              </label>
-              <div style={{ position: 'relative' }}>
-                <User size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  type="text"
-                  placeholder="e.g. Aarav"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.65rem 0.75rem 0.65rem 2.4rem',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-color)',
-                    backgroundColor: 'var(--bg-card)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem',
-                    outline: 'none'
-                  }}
-                  required
-                />
-              </div>
+        {/* Top Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-[6px] bg-[#2A1810] dark:bg-[#F0EADF] text-[#F5EFEB] dark:text-[#2A1810] flex items-center justify-center shrink-0">
+              <Coffee className="w-4 h-4" />
             </div>
-          )}
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              Email Address
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.65rem 0.75rem 0.65rem 2.4rem',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-card)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.9rem',
-                  outline: 'none'
-                }}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.65rem 0.75rem 0.65rem 2.4rem',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-card)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.9rem',
-                  outline: 'none'
-                }}
-                required
-              />
-            </div>
+            <span className="font-sans font-medium text-base text-[#2A1810] dark:text-[#F0EADF] tracking-tight">
+              CoffeeMind AI
+            </span>
           </div>
 
           <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              borderRadius: '10px',
-              backgroundColor: 'var(--accent-primary)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.95rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              marginTop: '0.5rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              boxShadow: '0 4px 12px rgba(184, 92, 44, 0.25)'
-            }}
+            type="button"
+            onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(null); }}
+            className="text-xs font-medium text-[#2A1810]/70 dark:text-[#F0EADF]/70 hover:text-[#2A1810] dark:hover:text-[#F0EADF] underline underline-offset-2 transition-colors cursor-pointer"
           >
-            {loading ? (
-              <span>Processing...</span>
-            ) : isSignUp ? (
-              <>
-                <UserPlus size={18} />
-                <span>Create Account</span>
-              </>
-            ) : (
-              <>
-                <LogIn size={18} />
-                <span>Sign In</span>
-              </>
-            )}
+            {isSignUp ? 'Sign in' : 'Create account'}
           </button>
-        </form>
+        </div>
 
-        {/* Demo Quick Sign-in Section */}
-        <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)' }}>
-          <p style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '0.75rem' }}>
-            Quick Demo Accounts
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+        {/* Form Container (Single column, spacious) */}
+        <div className="w-full max-w-[400px] my-auto py-6 space-y-5">
+          
+          {/* Headline (Serif display face ONLY here) */}
+          <div className="space-y-1.5">
+            <h1 className="font-serif text-3xl min-[880px]:text-[40px] font-bold text-[#2A1810] dark:text-[#F0EADF] leading-tight">
+              {isSignUp ? 'Create account' : 'Welcome back'}
+            </h1>
+            <p className="font-sans text-sm text-[#2A1810]/60 dark:text-[#F0EADF]/60 font-normal">
+              {isSignUp ? 'Build your personalized AI coffee profile.' : 'Continue your AI-powered coffee journey.'}
+            </p>
+          </div>
+
+          {/* OAuth Buttons (Pill shaped, semi-transparent white fill, thin 1px border) */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="h-10 px-3 rounded-full border border-[#2A1810]/15 dark:border-white/15 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-[#2A1810] dark:text-[#F0EADF] text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <GoogleIcon />
+              <span className="truncate">{loadingType === 'google' ? 'Connecting...' : 'Google'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => handleDemoSignIn('Aarav')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.6rem 0.75rem',
-                borderRadius: '8px',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
+              disabled={loading}
+              className="h-10 px-3 rounded-full border border-[#2A1810]/15 dark:border-white/15 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-[#2A1810] dark:text-[#F0EADF] text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
-              <span>Sign in as Aarav</span>
-              <ArrowRight size={14} color="var(--accent-primary)" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoSignIn('Priya')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.6rem 0.75rem',
-                borderRadius: '8px',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <span>Sign in as Priya</span>
-              <ArrowRight size={14} color="var(--accent-primary)" />
+              <User className="w-3.5 h-3.5 text-[#2A1810]/60 dark:text-[#F0EADF]/60" />
+              <span className="truncate">Demo User</span>
             </button>
           </div>
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center my-4">
+            <div className="w-full h-px bg-[#2A1810]/10 dark:bg-white/10" />
+            <span className="absolute bg-[#F5EFEB] dark:bg-[#14100D] px-3 text-[10px] font-semibold tracking-wider text-[#2A1810]/40 dark:text-[#F0EADF]/40 uppercase">
+              or with email
+            </span>
+          </div>
+
+          {/* Inline Error Alert */}
+          {errorMsg && (
+            <div className="p-3 rounded-[9px] bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-xs flex items-center gap-2 animate-fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Form Fields: rounded ~9px, soft semi-transparent white fill, warm accent focus ring */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 block">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Aarav Sharma"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full h-11 px-4 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 dark:border-white/10 text-[#2A1810] dark:text-[#F0EADF] placeholder:#2A1810/35 text-sm focus:outline-none focus:ring-2 focus:ring-[#C85A17]/40 focus:border-[#C85A17] transition-all"
+                  required
+                />
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 block">
+                Email Address
+              </label>
+              <input
+                type="email"
+                placeholder="harshitlog@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-11 px-4 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 dark:border-white/10 text-[#2A1810] dark:text-[#F0EADF] placeholder:#2A1810/35 text-sm focus:outline-none focus:ring-2 focus:ring-[#C85A17]/40 focus:border-[#C85A17] transition-all"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 block">
+                  Password
+                </label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => setErrorMsg('Password reset instructions will be sent to your email.')}
+                    className="text-xs text-[#C85A17] hover:underline font-medium"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <input
+                type="password"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full h-11 px-4 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 dark:border-white/10 text-[#2A1810] dark:text-[#F0EADF] placeholder:#2A1810/35 text-sm focus:outline-none focus:ring-2 focus:ring-[#C85A17]/40 focus:border-[#C85A17] transition-all"
+                required
+              />
+            </div>
+
+            {/* Checkbox + Terms */}
+            <div className="pt-1 flex items-start gap-2.5 text-xs text-[#2A1810]/60 dark:text-[#F0EADF]/60">
+              <input
+                type="checkbox"
+                id="terms"
+                defaultChecked
+                className="mt-0.5 rounded border-[#2A1810]/20 text-[#2A1810] focus:ring-0"
+              />
+              <label htmlFor="terms" className="leading-snug">
+                By signing in, you agree to our{' '}
+                <a href="#" className="text-[#2A1810] dark:text-[#F0EADF] underline font-bold">Terms of Service</a>{' '}
+                and{' '}
+                <a href="#" className="text-[#2A1810] dark:text-[#F0EADF] underline font-bold">Privacy Policy</a>.
+              </label>
+            </div>
+
+            {/* Full-width primary button, solid dark roast-brown fill, warm parchment text */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 mt-2 rounded-[9px] bg-[#2A1810] dark:bg-[#F0EADF] text-[#F5EFEB] dark:text-[#2A1810] font-semibold text-sm flex items-center justify-center transition-all hover:bg-[#3D251A] dark:hover:bg-[#E5DEC] cursor-pointer disabled:opacity-50 shadow-sm"
+            >
+              {loadingType === 'email' ? (
+                <span>{isSignUp ? 'Creating account...' : 'Signing in...'}</span>
+              ) : isSignUp ? (
+                <span>Create Account</span>
+              ) : (
+                <span>Sign In</span>
+              )}
+            </button>
+          </form>
+
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between text-xs text-[#2A1810]/40 dark:text-[#F0EADF]/40 pt-4 border-t border-[#2A1810]/5 dark:border-white/5">
+          <span>© 2026 CoffeeMind AI</span>
+          <button 
+            type="button"
+            onClick={() => setShowDevPanel(!showDevPanel)}
+            className="hover:text-[#2A1810] dark:hover:text-[#F0EADF] transition-colors text-[11px]"
+          >
+            Dev Access
+          </button>
+        </div>
+
+        {/* Dev Drawer */}
+        {showDevPanel && (
+          <div className="mt-2 p-3 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 text-xs space-y-2 animate-fade-in">
+            <p className="font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 text-[11px]">Developer Test Profiles</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('Aarav')}
+                disabled={loading}
+                className="py-1.5 px-2.5 rounded border border-[#2A1810]/10 bg-white dark:bg-[#14100D] text-[#2A1810] dark:text-[#F0EADF] text-left flex items-center justify-between cursor-pointer text-[11px]"
+              >
+                <span>Sign in Aarav</span>
+                <ArrowRight className="w-3 h-3 text-[#C85A17]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('Priya')}
+                disabled={loading}
+                className="py-1.5 px-2.5 rounded border border-[#2A1810]/10 bg-white dark:bg-[#14100D] text-[#2A1810] dark:text-[#F0EADF] text-left flex items-center justify-between cursor-pointer text-[11px]"
+              >
+                <span>Sign in Priya</span>
+                <ArrowRight className="w-3 h-3 text-[#C85A17]" />
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* RIGHT PANEL (~55% width, near-black background, warm ember-orange glow bottom-right, Hidden under 880px) */}
+      <div className="hidden min-[880px]:flex min-[880px]:w-[55%] h-full relative overflow-hidden bg-[#0B0806] text-white p-10 lg:p-14 flex-col justify-between">
+        
+        {/* Film-grain texture background */}
+        <GrainGradient
+          speed={1}
+          scale={1}
+          rotation={0}
+          offsetX={0}
+          offsetY={0}
+          softness={0.5}
+          intensity={0.5}
+          noise={0.25}
+          shape="corners"
+          frame={2854.5}
+          colors={["#FFFFFF", "#E05A10", "#E05A10", "#FFFFFF"]}
+          colorBack="#00000000"
+          className="absolute inset-0 bg-black opacity-80 pointer-events-none"
+        />
+
+        {/* Warm Ember-Orange Radial Gradient Glow (Bottom-Right) */}
+        <div 
+          className="absolute -bottom-20 -right-20 w-[480px] h-[480px] rounded-full opacity-35 blur-3xl pointer-events-none"
+          style={{ background: 'radial-gradient(circle, #E05A10 0%, transparent 70%)' }}
+        />
+
+        {/* Top Badges */}
+        <div className="relative z-10 flex items-center justify-between">
+          <span className="px-3 py-1 rounded-full border border-white/20 text-[10px] tracking-widest text-white/80 font-semibold uppercase">
+            v2.4 RAG ENGINE
+          </span>
+          <span className="px-3 py-1 rounded-full border border-[#E05A10]/40 bg-[#E05A10]/10 text-[10px] tracking-widest text-[#E05A10] font-semibold uppercase">
+            AI BARISTA ACTIVE
+          </span>
+        </div>
+
+        {/* Signature Visual Element & Copy Section */}
+        <div className="relative z-10 my-auto py-8 max-w-[540px] space-y-6">
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            {/* Signature Element: Espresso Machine Pressure Gauge */}
+            <EspressoPressureGauge />
+
+            {/* Right Side Headline & Copy */}
+            <div className="space-y-3">
+              {/* Short two-line headline in SERIF display face with solid accent color swap */}
+              <h2 className="font-serif text-2xl lg:text-3xl font-bold leading-snug text-white">
+                Precision extraction meets <span className="text-[#E05A10]">AI intelligence.</span>
+              </h2>
+
+              <p className="font-sans text-xs lg:text-sm text-white/70 font-normal leading-relaxed">
+                CoffeeMind analyzes extraction variables, bean origin, and roast density to deliver real-time recommendations grounded in our custom coffee knowledge base.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer info */}
+        <div className="relative z-10 flex items-center justify-between pt-4 border-t border-white/10 text-[11px] text-white/40 font-sans">
+          <span>Grounded RAG Coffee Engine</span>
+          <span>CoffeeMind AI System</span>
         </div>
 
       </div>
+
     </div>
   );
 };

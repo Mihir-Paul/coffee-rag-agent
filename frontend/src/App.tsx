@@ -50,6 +50,7 @@ export default function App() {
   // Supabase Auth & User Session State
   const [userSession, setUserSession] = useState<any>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<ConversationSession[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export default function App() {
       setAuthToken(mockToken);
       fetchUserProfile(mockToken);
       fetchConversations(mockToken);
+      setAuthChecking(false);
       return;
     }
 
@@ -94,6 +96,9 @@ export default function App() {
         fetchUserProfile(session.access_token);
         fetchConversations(session.access_token);
       }
+      setAuthChecking(false);
+    }).catch(() => {
+      setAuthChecking(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -107,6 +112,7 @@ export default function App() {
         setUserProfile(null);
         setConversations([]);
       }
+      setAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -340,11 +346,30 @@ export default function App() {
     ? `${pref.temperature} · ${pref.sweetness} Sweet · ${pref.milk_preference} · Budget ₹${pref.budget}`
     : 'Cold · Low Sweet · Oat Milk · Budget ₹250';
 
+  // 1. Session Loading State: Minimal CoffeeMind loader
+  if (authChecking) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#FBF4E9] dark:bg-[#1B120D] flex flex-col items-center justify-center space-y-4 font-sans text-[#2B1B10] dark:text-[#F5EAD9]">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#B85C2C] to-[#9C4A20] flex items-center justify-center shadow-xl shadow-[#B85C2C]/25 animate-pulse">
+          <Coffee className="w-7 h-7 text-white" />
+        </div>
+        <div className="text-center space-y-1">
+          <h2 className="font-serif text-xl font-bold">CoffeeMind AI</h2>
+          <p className="text-xs text-[#9C8A72] dark:text-[#9A877A]">Connecting to your coffee workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated State: Show Auth Screen ONLY (No dashboard behind it)
+  if (!authToken) {
+    return <AuthModal onAuthSuccess={() => {}} />;
+  }
+
+  // 3. Authenticated State: Render Main Dashboard
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-      
-      {/* If Unauthenticated, Render Polished CoffeeMind Auth Modal */}
-      {!authToken && <AuthModal onAuthSuccess={() => {}} />}
+
 
       {/* Sidebar Overlay (Mobile) */}
       {sidebarOpen && (

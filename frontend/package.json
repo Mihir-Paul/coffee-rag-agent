@@ -9,17 +9,26 @@
     "preview": "vite preview --port 5173"
   },
   "dependencies": {
+    "@paper-design/shaders-react": "^0.0.80",
     "@supabase/supabase-js": "^2.112.4",
+    "@types/three": "^0.185.4",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "tailwind-merge": "^3.6.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.4.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.6.3",
     "vite": "^6.0.5"
   }
