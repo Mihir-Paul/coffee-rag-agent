@@ -34,7 +34,7 @@ import { FeaturesPage } from './components/FeaturesPage';
 import { TechnologyPage } from './components/TechnologyPage';
 import { AppView } from './components/Navbar';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 const QUICK_ACTIONS = [
   { label: 'Recommend something', icon: Sparkles, prompt: 'Recommend a popular coffee for me' },

@@ -47,6 +47,7 @@ SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")                # SERVER O
 
 # Server Configuration
 PORT = int(os.getenv("PORT", 8000))
+HOST = os.getenv("HOST", "0.0.0.0")
 
 
 def validate_environment() -> tuple[bool, str]:

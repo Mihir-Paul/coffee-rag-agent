@@ -211,7 +211,39 @@ python -m pytest tests/
 
 ---
 
-## 7. Manual Test Prompts
+## 7. Production Deployment (Render Backend + Vercel Frontend)
+
+### Backend Deployment on Render:
+1. Create a new **Web Service** on [Render](https://render.com).
+2. Connect your Git repository.
+3. Configure service settings:
+   - **Runtime:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn server:app --host 0.0.0.0 --port $PORT` (or `python server.py`)
+   - **Health Check Path:** `/health`
+4. Set Environment Variables on Render:
+   - `GEMINI_API_KEY`: Your Google Gemini API Key
+   - `GEMINI_MODEL`: `gemini-3.7-flash`
+   - `SUPABASE_URL`: Your Supabase Project URL
+   - `SUPABASE_ANON_KEY`: Your Supabase Public Anon Key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Service Role Key
+   - `SUPABASE_JWT_SECRET`: Your Supabase JWT Secret
+   - `FRONTEND_URL`: `https://your-coffeemind-frontend.vercel.app`
+   - `ALLOWED_ORIGINS`: `https://your-coffeemind-frontend.vercel.app`
+   - `HOST`: `0.0.0.0`
+
+### Frontend Deployment on Vercel:
+1. Import your repository on [Vercel](https://vercel.com).
+2. Root Directory: `frontend`
+3. Framework Preset: `Vite`
+4. Set Environment Variables on Vercel:
+   - `VITE_API_BASE_URL`: `https://your-backend.onrender.com`
+   - `VITE_SUPABASE_URL`: `https://your-project.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY`: `your_public_anon_key`
+
+---
+
+## 8. Manual Test Prompts
 
 1. **Menu Query:** *"What coffees do you have?"*
 2. **Cold Drinks Query:** *"What cold drinks do you have?"*

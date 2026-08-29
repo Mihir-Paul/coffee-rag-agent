@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from coffee_agent.config import validate_environment, log_config_status, PORT, MENU_FILE_PATH
+from coffee_agent.config import validate_environment, log_config_status, PORT, HOST, MENU_FILE_PATH
 from coffee_agent.agent import root_agent
 from coffee_agent.rag import rag_engine
 from coffee_agent.model_provider import execute_adk_runner_with_retry
@@ -49,8 +49,8 @@ async def lifespan(app: FastAPI):
     log_config_status()
     rag_state = getattr(rag_engine, "rag_status", "available")
     logger.info("==================================================")
-    logger.info(f"CoffeeMind backend started on port {PORT}")
-    logger.info(f"API: http://localhost:{PORT}")
+    logger.info(f"CoffeeMind backend started on port {PORT} (host: {HOST})")
+    logger.info(f"API: http://{HOST}:{PORT}")
     logger.info(f"RAG Status: {rag_state} (Mode: {rag_engine.retrieval_mode})")
     logger.info("==================================================")
     yield
@@ -63,23 +63,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware for Vite frontend
+# CORS middleware for Vite frontend & Vercel deployments
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
     "http://localhost:3000",
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
-frontend_env_url = os.getenv("VITE_API_BASE_URL")
-if frontend_env_url:
-    allowed_origins.append(frontend_env_url)
+# Add origins from environment variables (comma-separated or single)
+for env_var in ["FRONTEND_URL", "ALLOWED_ORIGINS", "CORS_ORIGINS", "VERCEL_URL", "VITE_API_BASE_URL", "VITE_API_URL"]:
+    val = os.getenv(env_var)
+    if val:
+        for origin in val.split(","):
+            clean_origin = origin.strip().rstrip("/")
+            if clean_origin:
+                if not clean_origin.startswith("http://") and not clean_origin.startswith("https://"):
+                    clean_origin = f"https://{clean_origin}"
+                if clean_origin not in allowed_origins:
+                    allowed_origins.append(clean_origin)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -489,10 +500,10 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
 if __name__ == "__main__":
     import uvicorn
     log_config_status()
-    is_dev = os.getenv("ENV", "development").lower() != "production"
+    is_dev = os.getenv("ENV", "development").lower() == "development"
     uvicorn.run(
         "server:app",
-        host="127.0.0.1",
+        host=HOST,
         port=PORT,
         reload=is_dev,
         reload_includes=["*.py", ".env", ".env.*"] if is_dev else None
