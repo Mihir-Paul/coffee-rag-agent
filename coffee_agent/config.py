@@ -27,8 +27,10 @@ DATA_DIR = BASE_DIR / "data"
 MENU_FILE_PATH = Path(os.getenv("MENU_FILE_PATH", DATA_DIR / "menu.json"))
 CUSTOMERS_FILE_PATH = Path(os.getenv("CUSTOMERS_FILE_PATH", DATA_DIR / "customers.json"))
 
-# Gemini Configuration
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Gemini & Chatbot API Configuration
+CHATBOT_API_KEY = os.getenv("CHATBOT_API_KEY")
+CHATBOT_API_URL = os.getenv("CHATBOT_API_URL")
+GEMINI_API_KEY = CHATBOT_API_KEY or os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 DEFAULT_MODEL = GEMINI_MODEL
 
@@ -54,9 +56,9 @@ def validate_environment() -> tuple[bool, str]:
     """
     issues = []
 
-    # Check Gemini API Key
+    # Check API Key
     if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "" or GEMINI_API_KEY.startswith("your_"):
-        issues.append("Gemini API key is not configured. Check .env.")
+        issues.append("Chatbot / Gemini API key is not configured. Check .env for GEMINI_API_KEY or CHATBOT_API_KEY.")
 
     # Check Gemini Model
     if not GEMINI_MODEL or GEMINI_MODEL.strip() == "":

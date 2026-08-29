@@ -69,8 +69,8 @@ async def verify_supabase_token(authorization: Optional[str] = Header(None)) -> 
             detail="Authentication token cannot be empty."
         )
 
-    # Deterministic test tokens for test suite / offline development
-    if token.startswith("test-"):
+    # Deterministic test tokens for test suite / offline development / demo mode
+    if token.startswith("test-") or token.startswith("mock-"):
         return _get_mock_authenticated_user(token)
 
     # 1. Verify via Supabase Auth client if available

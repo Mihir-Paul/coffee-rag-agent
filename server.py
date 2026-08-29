@@ -106,7 +106,9 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    response: str
+    success: bool = True
+    message: str = ""
+    response: str = ""
     recommendations: List[Dict[str, Any]] = []
     session_id: str
     title: Optional[str] = None
@@ -389,6 +391,7 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
     
     internal_customer_id = auth_user.internal_customer_id
+    logger.info(f"[CHAT] Incoming request: session_id={payload.session_id}, user={internal_customer_id}")
     
     if payload.session_id and payload.session_id != "null":
         session_id = payload.session_id
@@ -420,6 +423,7 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
     effective_query = f"[Customer profile {internal_customer_id}] {user_msg}"
     adk_msg = types.Content(role="user", parts=[types.Part.from_text(text=effective_query)])
     
+    logger.info("[CHAT] Calling chatbot API")
     # Run ADK agent via model_provider helper with retry and error translation
     execution_result = await execute_adk_runner_with_retry(
         runner=runner,
@@ -429,11 +433,17 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
     )
 
     if execution_result.get("status") == "error":
+        status_code = execution_result.get("status_code", 500)
+        error_code = execution_result.get("error_code", "INTERNAL_SERVER_ERROR")
+        user_err_msg = execution_result.get("user_message", "AI service is temporarily unavailable. Please try again.")
+        logger.error(f"[CHAT] API status: {status_code} (Error: {error_code})")
+        logger.error(f"[CHAT] API error details: {execution_result.get('raw_error', user_err_msg)}")
         return JSONResponse(
-            status_code=execution_result.get("status_code", 500),
+            status_code=status_code,
             content={
-                "error": execution_result.get("error_code", "INTERNAL_SERVER_ERROR"),
-                "message": execution_result.get("user_message", "AI service is temporarily unavailable. Please try again.")
+                "success": False,
+                "error": error_code,
+                "message": user_err_msg
             }
         )
 
@@ -441,6 +451,10 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
     full_text = re.sub(r'\bCustomer\s+C\d{3}\b', 'your', full_text, flags=re.IGNORECASE)
     full_text = re.sub(r"\bC\d{3}'s\b", "your", full_text, flags=re.IGNORECASE)
     full_text = re.sub(r'\bC\d{3}\b', 'your', full_text, flags=re.IGNORECASE)
+
+    logger.info(f"[CHAT] API status: 200")
+    logger.info(f"[CHAT] API response: {full_text[:100]!r}...")
+    logger.info("[CHAT] Returning response to frontend")
 
     recommendations = extract_matching_recommendations(full_text)
     
@@ -461,12 +475,15 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
     title = generate_deterministic_title(user_msg)
 
     return ChatResponse(
+        success=True,
+        message=full_text,
         response=full_text,
         recommendations=recommendations,
         session_id=session_id,
         title=title,
         status="success"
     )
+
 
 
 if __name__ == "__main__":

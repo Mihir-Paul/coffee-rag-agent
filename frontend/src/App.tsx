@@ -313,24 +313,17 @@ export default function App() {
         })
       });
 
-      if (!res.ok) {
-        let errData: any = {};
-        try {
-          errData = await res.json();
-        } catch (_) {}
+      const data = await res.json().catch(() => ({}));
 
+      if (!res.ok || data.success === false) {
         if (res.status === 401) {
-          throw new Error('Your session has expired. Please sign in again.');
-        } else if (res.status === 429 || errData.error === 'AI_QUOTA_EXHAUSTED') {
-          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.\n\nOur AI service has reached its current usage limit.');
-        } else if (res.status === 503 || errData.error === 'AI_TEMPORARILY_UNAVAILABLE') {
-          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.');
+          throw new Error(data.message || data.error || 'Your session has expired. Please sign in again.');
+        } else if (res.status === 429 || data.error === 'AI_QUOTA_EXHAUSTED') {
+          throw new Error(data.message || 'CoffeeMind is temporarily unavailable. Please try again later.\n\nOur AI service has reached its current usage limit.');
         } else {
-          throw new Error('CoffeeMind is temporarily unavailable. Please try again later.');
+          throw new Error(data.message || data.error || 'CoffeeMind is temporarily unavailable. Please try again later.');
         }
       }
-
-      const data = await res.json();
 
       if (data.session_id) {
         setSessionId(data.session_id);
@@ -356,7 +349,8 @@ export default function App() {
         });
       }
 
-      const cleanedResponse = sanitizeClientText(data.response || 'I have found some options for you.');
+      const botText = data.response || data.message || 'I have found some options for you.';
+      const cleanedResponse = sanitizeClientText(botText);
 
       const botMsg: Message = {
         id: `bot-${Date.now()}`,
@@ -651,14 +645,44 @@ export default function App() {
 
         {/* Footer Settings & Logout */}
         <div style={{ borderTop: '1px solid var(--sidebar-border)', paddingTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button
-            onClick={() => setShowDevMode(!showDevMode)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
-            title="Toggle Developer Data Mapping"
-          >
-            <Settings size={16} color="var(--sidebar-text-muted)" />
-            <span style={{ fontSize: '0.8rem', color: 'var(--sidebar-text-muted)' }}>CoffeeMind v1.0</span>
-          </button>
+          {/* User Profile Info (Logo, Name, Email) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, flex: 1, marginRight: '0.5rem' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--accent-primary)',
+              color: 'var(--accent-ink)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              flexShrink: 0
+            }}>
+              <User size={18} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+              <span style={{
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: 'var(--sidebar-text)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {userProfile?.name || userSession?.user?.user_metadata?.name || 'Authenticated User'}
+              </span>
+              <span style={{
+                fontSize: '0.725rem',
+                color: 'var(--sidebar-text-muted)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {userProfile?.email || userSession?.user?.email || 'user@coffeemind.ai'}
+              </span>
+            </div>
+          </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button 
@@ -707,15 +731,18 @@ export default function App() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {window.innerWidth < 768 && (
-              <button onClick={() => setSidebarOpen(true)} style={{ color: 'var(--text-primary)', padding: '0.25rem' }}>
+              <button onClick={() => setSidebarOpen(true)} style={{ color: 'var(--ink)', padding: '0.25rem' }}>
                 <Menu size={22} />
               </button>
             )}
             <div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>
                 CoffeeMind AI
               </h2>
-              <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 600 }}>● RAG-Grounded & Supabase Authenticated</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                <span style={{ color: 'var(--success)' }}>●</span>
+                <span style={{ color: 'var(--ink-muted)' }}>RAG-Grounded & Supabase Authenticated</span>
+              </div>
             </div>
           </div>
 
@@ -727,8 +754,8 @@ export default function App() {
                 fontWeight: 600,
                 padding: '0.4rem 0.8rem',
                 borderRadius: '6px',
-                border: '1px solid var(--border-color)',
-                color: 'var(--accent-primary)',
+                border: '1px solid var(--border)',
+                color: 'var(--accent)',
                 backgroundColor: 'transparent',
                 cursor: 'pointer'
               }}
@@ -742,8 +769,10 @@ export default function App() {
                 fontWeight: 600,
                 padding: '0.4rem 0.8rem',
                 borderRadius: '6px',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-secondary)'
+                border: '1px solid var(--border)',
+                color: 'var(--ink-muted)',
+                backgroundColor: 'transparent',
+                cursor: 'pointer'
               }}
             >
               Clear Session

@@ -51,7 +51,8 @@ async def execute_adk_runner_with_retry(
                     "status": "error",
                     "error_code": "AI_QUOTA_EXHAUSTED",
                     "user_message": "AI service usage limit reached.",
-                    "status_code": 429
+                    "status_code": 429,
+                    "raw_error": err_msg
                 }
 
             elif "503" in err_msg or "UNAVAILABLE" in err_msg or "high demand" in err_msg:
@@ -64,7 +65,8 @@ async def execute_adk_runner_with_retry(
                         "status": "error",
                         "error_code": "AI_TEMPORARILY_UNAVAILABLE",
                         "user_message": "AI service is temporarily unavailable.",
-                        "status_code": 503
+                        "status_code": 503,
+                        "raw_error": err_msg
                     }
 
             elif "403" in err_msg or "PERMISSION" in err_msg or "API key" in err_msg:
@@ -73,7 +75,8 @@ async def execute_adk_runner_with_retry(
                     "status": "error",
                     "error_code": "AI_AUTHENTICATION_ERROR",
                     "user_message": "Authentication error with AI provider.",
-                    "status_code": 403
+                    "status_code": 403,
+                    "raw_error": err_msg
                 }
 
             elif "404" in err_msg or "NOT_FOUND" in err_msg:
@@ -82,7 +85,8 @@ async def execute_adk_runner_with_retry(
                     "status": "error",
                     "error_code": "AI_MODEL_NOT_FOUND",
                     "user_message": "Selected Gemini model is currently unavailable.",
-                    "status_code": 404
+                    "status_code": 404,
+                    "raw_error": err_msg
                 }
 
             else:
@@ -91,7 +95,8 @@ async def execute_adk_runner_with_retry(
                     "status": "error",
                     "error_code": "INTERNAL_SERVER_ERROR",
                     "user_message": "AI service is temporarily unavailable.",
-                    "status_code": 500
+                    "status_code": 500,
+                    "raw_error": err_msg
                 }
 
     return {
