@@ -304,16 +304,31 @@ export default function App() {
       headers['Authorization'] = `Bearer ${effectiveToken}`;
 
       const targetEndpoint = `${API_BASE_URL}/api/chat`;
+      const requestPayload = {
+        message: queryText,
+        session_id: sessionId
+      };
+
+      console.log(`[CoffeeMind Chat Request] POST ${targetEndpoint}`, {
+        endpoint: targetEndpoint,
+        payload: requestPayload,
+        hasAuthToken: Boolean(effectiveToken)
+      });
+
       const res = await fetch(targetEndpoint, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          message: queryText,
-          session_id: sessionId
-        })
+        body: JSON.stringify(requestPayload)
       });
 
       const data = await res.json().catch(() => ({}));
+
+      console.log(`[CoffeeMind Chat Response] HTTP ${res.status}`, {
+        endpoint: targetEndpoint,
+        status: res.status,
+        ok: res.ok,
+        responseJson: data
+      });
 
       if (!res.ok || data.success === false) {
         console.error('[CoffeeMind Backend Error Details]:', {
