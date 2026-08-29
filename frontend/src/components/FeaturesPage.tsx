@@ -112,16 +112,16 @@ export const FeaturesPage: React.FC<FeaturesPageProps> = ({
           </div>
 
           {/* Centered CTA Section */}
-          <div className="cta-container !mb-3 sm:!mb-5">
-            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-[#140E0A] via-[#1B120D] to-[#2B1B10] text-[#F5EAD9] text-center space-y-2 sm:space-y-3 shadow-xl border border-[#2A1D15]">
-              <h3 className="font-serif text-[clamp(20px,2.2vw,26px)] font-bold">Experience smart coffee recommendations</h3>
-              <p className="text-xs sm:text-sm text-[#C5B4A5] max-w-md mx-auto leading-relaxed">
+          <div className="cta-container">
+            <div className="cta-banner">
+              <h3 className="cta-title">Experience smart coffee recommendations</h3>
+              <p className="cta-desc">
                 Try CoffeeMind AI today and get instant, grounded beverage choices.
               </p>
-              <div className="pt-1">
+              <div className="cta-button-wrap">
                 <button
                   onClick={() => onNavigate(isAuthenticated ? 'chat' : 'auth')}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#B85C2C] to-[#A34E22] hover:from-[#A34E22] hover:to-[#8B3E18] text-white font-bold text-xs sm:text-sm shadow-lg inline-flex items-center gap-2 hover:scale-[1.02] transition-transform"
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#B85C2C] to-[#A34E22] hover:from-[#A34E22] hover:to-[#8B3E18] text-white font-bold text-xs sm:text-sm shadow-lg inline-flex items-center gap-2 hover:scale-[1.02] transition-transform"
                 >
                   <span>Start Your Coffee Journey</span>
                   <ArrowRight className="w-4 h-4" />

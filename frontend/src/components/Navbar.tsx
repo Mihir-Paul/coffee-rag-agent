@@ -74,13 +74,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             Technology
           </button>
 
-          {/* Theme Toggle */}
+          {/* Theme Toggle Button */}
           <button
             onClick={onToggleTheme}
-            className="p-2 rounded-xl border border-[#E6D5C3] dark:border-[#2A1D15] bg-[#F8F3EA] dark:bg-[#18110C] text-[#2B1B10] dark:text-[#F5EAD9] hover:border-[#B85C2C] transition-all ml-1"
-            aria-label="Toggle Theme"
+            className="px-3 py-2 rounded-xl border border-[#E6D5C3] dark:border-[#2A1D15] bg-[#F8F3EA] dark:bg-[#18110C] text-[#2B1B10] dark:text-[#F5EAD9] hover:border-[#B85C2C] dark:hover:border-[#D9A441] transition-all flex items-center gap-2 ml-1"
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
           >
-            {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-[#D9A441]" />}
+            {theme === 'light' ? (
+              <>
+                <Moon className="w-4 h-4 text-[#2B1B10]" />
+                <span className="text-xs font-semibold text-[#6E5D4F]">Dark</span>
+              </>
+            ) : (
+              <>
+                <Sun className="w-4 h-4 text-[#D9A441]" />
+                <span className="text-xs font-semibold text-[#C5B4A5]">Light</span>
+              </>
+            )}
           </button>
 
           {/* User Auth Actions */}
@@ -115,9 +126,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={onToggleTheme}
-            className="p-2 rounded-lg border border-[#E6D5C3] dark:border-[#2A1D15]"
+            className="px-2.5 py-1.5 rounded-lg border border-[#E6D5C3] dark:border-[#2A1D15] bg-[#F8F3EA] dark:bg-[#18110C] text-[#2B1B10] dark:text-[#F5EAD9] flex items-center gap-1.5"
+            aria-label="Toggle Theme"
           >
-            {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-[#D9A441]" />}
+            {theme === 'light' ? (
+              <>
+                <Moon className="w-4 h-4 text-[#2B1B10]" />
+                <span className="text-xs font-semibold">Dark</span>
+              </>
+            ) : (
+              <>
+                <Sun className="w-4 h-4 text-[#D9A441]" />
+                <span className="text-xs font-semibold text-[#D9A441]">Light</span>
+              </>
+            )}
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

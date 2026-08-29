@@ -94,13 +94,13 @@ export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({
           </div>
 
           {/* Centered CTA Section */}
-          <div className="cta-container !mb-4 sm:!mb-6">
-            <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#140E0A] via-[#1B120D] to-[#2B1B10] text-[#F5EAD9] text-center space-y-3 sm:space-y-4 shadow-2xl border border-[#2A1D15]">
-              <h3 className="font-serif text-[clamp(22px,2.5vw,30px)] font-bold">Ready to find your perfect cup?</h3>
-              <p className="text-xs sm:text-sm text-[#C5B4A5] max-w-lg mx-auto leading-relaxed">
+          <div className="cta-container">
+            <div className="cta-banner">
+              <h3 className="cta-title">Ready to find your perfect cup?</h3>
+              <p className="cta-desc">
                 Experience AI-driven recommendations personalized to your daily coffee mood.
               </p>
-              <div className="pt-1">
+              <div className="cta-button-wrap">
                 <button
                   onClick={() => onNavigate(isAuthenticated ? 'chat' : 'auth')}
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#B85C2C] to-[#A34E22] hover:from-[#A34E22] hover:to-[#8B3E18] text-white font-bold text-xs sm:text-sm shadow-xl inline-flex items-center gap-2 hover:scale-[1.02] transition-transform"
