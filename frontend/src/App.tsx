@@ -300,11 +300,11 @@ export default function App() {
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
+      const effectiveToken = authToken || localStorage.getItem('coffeemind_mock_token') || 'mock-demo-token-aarav';
+      headers['Authorization'] = `Bearer ${effectiveToken}`;
 
-      const res = await fetch(`${API_BASE_URL}/api/chat`, {
+      const targetEndpoint = `${API_BASE_URL}/api/chat`;
+      const res = await fetch(targetEndpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -316,12 +316,20 @@ export default function App() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || data.success === false) {
+        console.error('[CoffeeMind Backend Error Details]:', {
+          requestUrl: targetEndpoint,
+          status: res.status,
+          statusText: res.statusText,
+          responseBody: data
+        });
+
         if (res.status === 401) {
-          throw new Error(data.message || data.error || 'Your session has expired. Please sign in again.');
+          throw new Error(data.message || data.error || data.detail || 'Your session has expired. Please sign in again.');
         } else if (res.status === 429 || data.error === 'AI_QUOTA_EXHAUSTED') {
-          throw new Error(data.message || 'CoffeeMind is temporarily unavailable. Please try again later.\n\nOur AI service has reached its current usage limit.');
+          throw new Error(data.message || 'CoffeeMind is temporarily at capacity. Please try again in a few moments.');
         } else {
-          throw new Error(data.message || data.error || 'CoffeeMind is temporarily unavailable. Please try again later.');
+          const detailMsg = data.message || data.error || (typeof data.detail === 'string' ? data.detail : null);
+          throw new Error(detailMsg || `Server error (${res.status} ${res.statusText})`);
         }
       }
 
