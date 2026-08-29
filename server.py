@@ -275,12 +275,12 @@ async def update_preferences(payload: CustomerPreferencesPayload, auth_user: Aut
                 "dietary_restrictions": payload.dietary_restrictions
             }
             res = supabase_client.table("customer_preferences").upsert(pref_data, on_conflict="customer_id").execute()
-            return {"status": "success", "preferences": payload.dict()}
+            return {"status": "success", "preferences": payload.model_dump()}
         except Exception as e:
             logger.error(f"Failed to update preferences in Supabase: {e}")
             raise HTTPException(status_code=500, detail="Failed to save preferences.")
 
-    return {"status": "success", "preferences": payload.dict()}
+    return {"status": "success", "preferences": payload.model_dump()}
 
 
 @app.get("/api/memories")

@@ -3,6 +3,11 @@
 .env.local
 *.env
 
+# Dependencies & Build Output
+node_modules/
+dist/
+build/
+
 # Python & Virtual Environments
 __pycache__/
 *.py[cod]

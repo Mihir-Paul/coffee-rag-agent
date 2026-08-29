@@ -2,17 +2,21 @@
   "name": "coffee-shop-rag",
   "version": "1.0.0",
   "private": true,
-  "description": "CoffeeMind AI - Customer-facing RAG coffee assistant",
+  "main": "server.js",
   "scripts": {
+    "postinstall": "pip install -r requirements.txt || pip3 install -r requirements.txt || true",
     "predev": "python scripts/clear_ports.py",
     "frontend": "npm run dev --prefix frontend",
-    "backend": "python server.py",
-    "start": "python server.py",
+    "backend": "node server.js",
+    "start": "node server.js",
     "dev": "concurrently -k -n \"backend,frontend\" -c \"yellow,cyan\" \"npm run backend\" \"npm run frontend\"",
     "rag:ingest": "python scripts/setup_rag.py",
     "frontend:build": "npm run build --prefix frontend",
     "frontend:preview": "npm run preview --prefix frontend",
     "test": "pytest tests/ -v"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
