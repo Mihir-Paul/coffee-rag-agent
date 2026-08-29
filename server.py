@@ -27,7 +27,8 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from coffee_agent.auth import (
-    verify_supabase_token, 
+    verify_supabase_token,
+    get_optional_auth_user,
     AuthenticatedUser, 
     supabase_client,
     _load_local_customers
@@ -407,7 +408,7 @@ async def get_conversation_messages(conversation_id: str, auth_user: Authenticat
 
 @app.post("/api/chat", response_model=ChatResponse)
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Depends(get_optional_auth_user)):
     """Secured chat endpoint verified via Supabase JWT token."""
     user_msg = payload.message.strip()
     if not user_msg:

@@ -9,11 +9,25 @@ from server import app
 client = TestClient(app)
 
 
-def test_unauthenticated_chat_rejected():
-    """Verify that requests without Bearer authorization token are rejected with 401."""
-    response = client.post("/api/chat", json={"message": "Recommend something cold"})
-    assert response.status_code == 401
-    assert "Authentication required" in response.json()["detail"]
+def test_unauthenticated_chat_allowed_as_guest(monkeypatch):
+    """Verify that requests without Bearer token gracefully fallback to guest user session."""
+    async def mock_run_async(*args, **kwargs):
+        class MockPart:
+            text = "Here are our refreshing cold drinks!"
+        class MockContent:
+            parts = [MockPart()]
+        class MockEvent:
+            content = MockContent()
+        yield MockEvent()
+
+    from server import runner
+    monkeypatch.setattr(runner, "run_async", mock_run_async)
+
+    response = client.post("/chat", json={"message": "What cold drinks do you have?"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert "cold drinks" in data["response"]
 
 
 def test_unauthenticated_me_rejected():

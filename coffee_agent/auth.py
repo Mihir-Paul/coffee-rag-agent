@@ -9,7 +9,8 @@ and managing Row-Level Security (RLS) consistent database interactions.
 import os
 import json
 import logging
-import jwt
+# pyrefly: ignore [missing-import]
+import jwt  # type: ignore
 from typing import Optional, Dict, Any
 from pathlib import Path
 from fastapi import HTTPException, Header, Depends, status
@@ -26,7 +27,8 @@ logger = logging.getLogger("coffee_auth")
 supabase_client = None
 if SUPABASE_URL and (SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY):
     try:
-        from supabase import create_client
+        # pyrefly: ignore [missing-import]
+        from supabase import create_client  # type: ignore
         key_to_use = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
         supabase_client = create_client(SUPABASE_URL, key_to_use)
         logger.info("Supabase client initialized successfully on backend.")
@@ -52,6 +54,28 @@ class AuthenticatedUser:
         self.name = name
         self.internal_customer_id = internal_customer_id  # e.g., 'C001', 'C002'
         self.db_customer_id = db_customer_id  # UUID PK in Supabase 'customers' table
+
+
+async def get_optional_auth_user(authorization: Optional[str] = Header(None)) -> AuthenticatedUser:
+    """FastAPI dependency: extracts authenticated user if token present, otherwise defaults to Guest (C001)."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return AuthenticatedUser(
+            auth_user_id="guest-anon-session",
+            email="guest@coffeemind.ai",
+            name="Guest",
+            internal_customer_id="C001",
+            db_customer_id=None
+        )
+    try:
+        return await verify_supabase_token(authorization)
+    except HTTPException:
+        return AuthenticatedUser(
+            auth_user_id="guest-anon-session",
+            email="guest@coffeemind.ai",
+            name="Guest",
+            internal_customer_id="C001",
+            db_customer_id=None
+        )
 
 
 async def verify_supabase_token(authorization: Optional[str] = Header(None)) -> AuthenticatedUser:
