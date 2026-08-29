@@ -7,12 +7,12 @@ def test_agent_initialization():
     """Verify that root_agent is initialized with correct ADK properties."""
     assert isinstance(root_agent, Agent)
     assert root_agent.name in ("coffee_agent", "coffee_shop_agent")
-    assert len(root_agent.tools) == 4
+    assert len(root_agent.tools) >= 4
     tool_names = [t.__name__ for t in root_agent.tools]
     assert "search_menu" in tool_names
     assert "get_customer_profile" in tool_names
     assert "get_menu_item" in tool_names
-    assert "rag_search" in tool_names
+    assert "search_coffee_knowledge" in tool_names or "rag_search" in tool_names
 
 
 def test_agent_instruction_contains_safety_rules():

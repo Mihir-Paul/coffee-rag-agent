@@ -6,7 +6,6 @@ import asyncio
 import logging
 from typing import Optional, List, Dict, Any
 from pathlib import Path
-# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,22 +13,17 @@ load_dotenv()
 # Ensure coffee_agent package is discoverable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.responses import JSONResponse
-# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
-# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 
 from coffee_agent.config import validate_environment, log_config_status, PORT, MENU_FILE_PATH
 from coffee_agent.agent import root_agent
 from coffee_agent.rag import rag_engine
-# pyrefly: ignore [missing-import]
+from coffee_agent.model_provider import execute_adk_runner_with_retry
 from google.adk.runners import Runner
-# pyrefly: ignore [missing-import]
 from google.adk.sessions import InMemorySessionService
-# pyrefly: ignore [missing-import]
 from google.genai import types
 
 from coffee_agent.auth import (
@@ -57,7 +51,7 @@ async def lifespan(app: FastAPI):
     logger.info("==================================================")
     logger.info(f"CoffeeMind backend started on port {PORT}")
     logger.info(f"API: http://localhost:{PORT}")
-    logger.info(f"RAG Status: {rag_state}")
+    logger.info(f"RAG Status: {rag_state} (Mode: {rag_engine.retrieval_mode})")
     logger.info("==================================================")
     yield
     logger.info("CoffeeMind backend shutting down.")
@@ -65,11 +59,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="CoffeeMind AI Backend",
-    description="Customer-facing API endpoint for CoffeeMind AI assistant powered by Google ADK and RAG.",
+    description="Customer-facing API endpoint powered by Google ADK, LangChain RAG, and Supabase Auth.",
     lifespan=lifespan
 )
 
-# Configurable CORS origins for development
+# CORS middleware for Vite frontend
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -115,7 +109,21 @@ class ChatResponse(BaseModel):
     response: str
     recommendations: List[Dict[str, Any]] = []
     session_id: str
+    title: Optional[str] = None
     status: str = "success"
+
+
+class CustomerPreferencesPayload(BaseModel):
+    temperature: str = "Cold"
+    sweetness: str = "Medium"
+    milk_preference: str = "Oat Milk"
+    caffeine_preference: str = "Medium"
+    budget: float = 250.0
+    dietary_restrictions: List[str] = []
+
+
+class MemoryPayload(BaseModel):
+    memory_text: str
 
 
 def extract_matching_recommendations(text: str) -> List[Dict[str, Any]]:
@@ -141,38 +149,54 @@ def extract_matching_recommendations(text: str) -> List[Dict[str, Any]]:
 
 
 def generate_deterministic_title(message: str) -> str:
-    """Generate a clean, deterministic session title without extra LLM requests."""
+    """Generate a clean, human-readable 2-6 word title based on user message context."""
     clean = message.strip()
     if not clean:
-        return "Coffee Session"
+        return "New Chat"
 
     lower = clean.lower()
-    if "cold" in lower and "sweet" in lower:
-        return "Cold & Sweet Order"
-    elif "cold" in lower or "iced" in lower:
-        return "Cold Drink Recommendation"
-    elif "hot" in lower or "warm" in lower:
-        return "Hot Coffee Selection"
-    elif "dairy" in lower or "oat" in lower or "vegan" in lower:
-        return "Dietary & Non-Dairy Options"
-    elif "budget" in lower or "under" in lower or "price" in lower or "₹" in lower:
-        return "Budget Coffee Search"
-    elif "caffeine" in lower or "strong" in lower:
-        return "High Caffeine Order"
 
-    # Default to clean snippet of first prompt
-    words = clean.split()
-    snippet = " ".join(words[:4])
-    return snippet.capitalize() if snippet else "Coffee Session"
+    if "sweet" in lower and ("recommend" in lower or "what" in lower or "like" in lower):
+        return "Sweet Coffee Recommendations"
+    elif "sweet" in lower and ("cold" in lower or "iced" in lower):
+        return "Sweet Cold Coffee"
+    elif "sweet" in lower:
+        return "Sweet Coffee Recommendations"
+    elif "strong" in lower and ("under" in lower or "200" in lower or "₹" in lower or "budget" in lower):
+        return "Strong Coffee Under ₹200"
+    elif "strong" in lower or "caffeine" in lower:
+        return "High Caffeine Selection"
+    elif "dairy-free" in lower or "dairy free" in lower or "without dairy" in lower or "no dairy" in lower:
+        return "Dairy-Free Cold Coffee"
+    elif "oat milk" in lower or "oat" in lower:
+        return "Oat Milk Recommendations"
+    elif "cold" in lower or "iced" in lower or "frappe" in lower:
+        return "Cold Drink Recommendations"
+    elif "hot" in lower or "warm" in lower or "espresso" in lower:
+        return "Hot Coffee Selection"
+    elif "under" in lower or "budget" in lower or "price" in lower or "₹" in lower:
+        return "Budget Coffee Search"
+
+    stop_words = {"what", "coffee", "would", "you", "recommend", "if", "i", "like", "want", "do", "have", "can", "get", "please", "the", "a", "an", "something", "with", "for", "me", "is", "are"}
+    meaningful_words = [w for w in clean.split() if w.lower() not in stop_words and len(w) > 1]
+
+    if not meaningful_words:
+        meaningful_words = clean.split()
+
+    snippet = " ".join(meaningful_words[:4]).strip()
+    if snippet:
+        return snippet.title()
+
+    return "Coffee Session"
 
 
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    rag_state = getattr(rag_engine, "rag_status", "available")
     return {
         "status": "ok",
-        "rag": rag_state,
+        "rag": rag_engine.rag_status,
+        "rag_mode": rag_engine.retrieval_mode,
         "app": "CoffeeMind AI Backend",
         "agent": root_agent.name,
         "model": root_agent.model,
@@ -192,7 +216,6 @@ async def get_user_profile(auth_user: AuthenticatedUser = Depends(verify_supabas
         "dietary_restrictions": []
     }
 
-    # Fetch from Supabase DB if available
     if supabase_client and auth_user.db_customer_id:
         try:
             pref_res = supabase_client.table("customer_preferences").select("*").eq("customer_id", auth_user.db_customer_id).execute()
@@ -208,19 +231,6 @@ async def get_user_profile(auth_user: AuthenticatedUser = Depends(verify_supabas
                 }
         except Exception as e:
             logger.warning(f"Failed to fetch preferences from Supabase: {e}")
-    else:
-        # Fallback to local customers.json
-        local = _load_local_customers()
-        found = next((c for c in local if c.get("customer_id") == auth_user.internal_customer_id), None)
-        if found:
-            preferences = {
-                "temperature": found.get("preferred_temperature", "Cold"),
-                "sweetness": found.get("preferred_sweetness", "Medium"),
-                "milk_preference": found.get("preferred_milk", "Oat Milk"),
-                "caffeine_preference": found.get("caffeine_preference", "Medium"),
-                "budget": float(found.get("budget_inr", 250)),
-                "dietary_restrictions": found.get("dietary_restrictions", [])
-            }
 
     return {
         "id": auth_user.auth_user_id,
@@ -228,6 +238,84 @@ async def get_user_profile(auth_user: AuthenticatedUser = Depends(verify_supabas
         "email": auth_user.email,
         "preferences": preferences
     }
+
+
+@app.get("/api/preferences")
+async def get_preferences(auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Fetch authenticated user's preferences."""
+    profile = await get_user_profile(auth_user)
+    return profile.get("preferences", {})
+
+
+@app.put("/api/preferences")
+async def update_preferences(payload: CustomerPreferencesPayload, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Update authenticated user's coffee taste preferences."""
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            pref_data = {
+                "customer_id": auth_user.db_customer_id,
+                "temperature": payload.temperature,
+                "sweetness": payload.sweetness,
+                "milk_preference": payload.milk_preference,
+                "caffeine_preference": payload.caffeine_preference,
+                "budget": payload.budget,
+                "dietary_restrictions": payload.dietary_restrictions
+            }
+            res = supabase_client.table("customer_preferences").upsert(pref_data, on_conflict="customer_id").execute()
+            return {"status": "success", "preferences": payload.dict()}
+        except Exception as e:
+            logger.error(f"Failed to update preferences in Supabase: {e}")
+            raise HTTPException(status_code=500, detail="Failed to save preferences.")
+
+    return {"status": "success", "preferences": payload.dict()}
+
+
+@app.get("/api/memories")
+async def get_memories(auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Fetch user's persistent coffee memories."""
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            res = supabase_client.table("customer_memories").select("*").eq("customer_id", auth_user.db_customer_id).eq("is_active", True).order("created_at", desc=True).execute()
+            return {"memories": res.data or []}
+        except Exception as e:
+            logger.error(f"Error fetching memories from Supabase: {e}")
+
+    return {"memories": []}
+
+
+@app.post("/api/memories")
+async def add_memory(payload: MemoryPayload, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Add a new personal memory for the user."""
+    clean_text = payload.memory_text.strip()
+    if not clean_text:
+        raise HTTPException(status_code=400, detail="Memory text cannot be empty.")
+
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            res = supabase_client.table("customer_memories").insert({
+                "customer_id": auth_user.db_customer_id,
+                "memory_text": clean_text
+            }).execute()
+            if res.data:
+                return res.data[0]
+        except Exception as e:
+            logger.error(f"Failed to add memory in Supabase: {e}")
+
+    return {"id": "mem-local", "memory_text": clean_text, "created_at": "2026-08-29T10:00:00Z"}
+
+
+@app.delete("/api/memories/{memory_id}")
+async def delete_memory(memory_id: str, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
+    """Delete or deactivate a user memory with ownership check."""
+    if supabase_client and auth_user.db_customer_id:
+        try:
+            supabase_client.table("customer_memories").delete().eq("id", memory_id).eq("customer_id", auth_user.db_customer_id).execute()
+            return {"status": "success", "deleted_id": memory_id}
+        except Exception as e:
+            logger.error(f"Failed to delete memory: {e}")
+            raise HTTPException(status_code=500, detail="Could not delete memory.")
+
+    return {"status": "success", "deleted_id": memory_id}
 
 
 @app.get("/api/conversations")
@@ -240,17 +328,7 @@ async def get_conversations(auth_user: AuthenticatedUser = Depends(verify_supaba
         except Exception as e:
             logger.error(f"Error fetching conversations from Supabase: {e}")
 
-    # Offline/Mock fallback
-    return {
-        "conversations": [
-            {
-                "id": "session-default-1",
-                "title": "Current Coffee Session",
-                "created_at": "2026-08-27T10:00:00Z",
-                "updated_at": "2026-08-27T10:00:00Z"
-            }
-        ]
-    }
+    return {"conversations": []}
 
 
 @app.post("/api/conversations")
@@ -260,21 +338,20 @@ async def create_conversation(auth_user: AuthenticatedUser = Depends(verify_supa
         try:
             res = supabase_client.table("conversations").insert({
                 "customer_id": auth_user.db_customer_id,
-                "title": "New Coffee Session"
+                "title": "New Chat"
             }).execute()
             if res.data:
                 return res.data[0]
         except Exception as e:
             logger.error(f"Failed to create conversation in Supabase: {e}")
 
-    # Fallback return
-    owner_id = (auth_user.db_customer_id or "c001").lower()
+    owner_id = (auth_user.internal_customer_id or auth_user.auth_user_id or "c001").lower()
     new_id = f"conv-{owner_id}-{int(asyncio.get_event_loop().time() * 1000)}"
     return {
         "id": new_id,
-        "title": "New Coffee Session",
-        "created_at": "2026-08-27T10:00:00Z",
-        "updated_at": "2026-08-27T10:00:00Z"
+        "title": "New Chat",
+        "created_at": "2026-08-29T10:00:00Z",
+        "updated_at": "2026-08-29T10:00:00Z"
     }
 
 
@@ -283,7 +360,6 @@ async def get_conversation_messages(conversation_id: str, auth_user: Authenticat
     """Fetch messages for a specific conversation with strict ownership verification."""
     if supabase_client and auth_user.db_customer_id:
         try:
-            # Verify user owns the conversation first
             conv = supabase_client.table("conversations").select("*").eq("id", conversation_id).eq("customer_id", auth_user.db_customer_id).execute()
             if not conv.data:
                 raise HTTPException(status_code=403, detail="Access denied. You do not own this conversation.")
@@ -295,39 +371,35 @@ async def get_conversation_messages(conversation_id: str, auth_user: Authenticat
         except Exception as e:
             logger.error(f"Failed to load messages from Supabase: {e}")
 
-    # Fallback / offline mode ownership verification
-    owner_id = (auth_user.db_customer_id or "c001").lower()
-    if conversation_id.startswith("conv-") and not conversation_id.startswith(f"conv-{owner_id}-"):
-        raise HTTPException(status_code=403, detail="Access denied. You do not own this conversation.")
+    # Fallback user isolation check for local/mock mode
+    if conversation_id.startswith("conv-"):
+        owner_internal = auth_user.internal_customer_id.lower()
+        owner_auth = auth_user.auth_user_id.lower()
+        if owner_internal not in conversation_id.lower() and owner_auth not in conversation_id.lower():
+            raise HTTPException(status_code=403, detail="Access denied. You do not own this conversation.")
 
     return {"messages": []}
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
-    """Secured chat endpoint verified via Supabase JWT token.
-    Uses authenticated user's mapped internal customer ID for ADK context."""
-
+    """Secured chat endpoint verified via Supabase JWT token."""
     user_msg = payload.message.strip()
     if not user_msg:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
     
-    # Internal customer ID resolved securely on server-side (NEVER trusted from client payload)
     internal_customer_id = auth_user.internal_customer_id
     
-    # Resolve or create conversation session
     if payload.session_id and payload.session_id != "null":
         session_id = payload.session_id
     else:
-        # Create session in ADK
         session = await session_service.create_session(app_name="coffee_agent", user_id=internal_customer_id)
         session_id = session.id
 
-        # Persist conversation record in Supabase DB
         if supabase_client and auth_user.db_customer_id:
             try:
                 title = generate_deterministic_title(user_msg)
-                conv = supabase_client.table("conversations").insert({
+                supabase_client.table("conversations").insert({
                     "id": session_id,
                     "customer_id": auth_user.db_customer_id,
                     "title": title
@@ -335,7 +407,6 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
             except Exception as e:
                 logger.warning(f"Could not insert conversation into Supabase DB: {e}")
 
-    # Persist incoming user message to Supabase DB if available
     if supabase_client:
         try:
             supabase_client.table("messages").insert({
@@ -346,119 +417,56 @@ async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Dep
         except Exception as e:
             logger.warning(f"Failed to save user message to DB: {e}")
 
-    # Format user message for ADK runner
     effective_query = f"[Customer profile {internal_customer_id}] {user_msg}"
     adk_msg = types.Content(role="user", parts=[types.Part.from_text(text=effective_query)])
     
-    # Bounded retries with exponential backoff ONLY for 503 UNAVAILABLE high demand errors
-    max_retries = 3
-    retry_delays = [2, 4, 8]
+    # Run ADK agent via model_provider helper with retry and error translation
+    execution_result = await execute_adk_runner_with_retry(
+        runner=runner,
+        user_id=internal_customer_id,
+        session_id=session_id,
+        new_message=adk_msg
+    )
+
+    if execution_result.get("status") == "error":
+        return JSONResponse(
+            status_code=execution_result.get("status_code", 500),
+            content={
+                "error": execution_result.get("error_code", "INTERNAL_SERVER_ERROR"),
+                "message": execution_result.get("user_message", "AI service is temporarily unavailable. Please try again.")
+            }
+        )
+
+    full_text = execution_result.get("text", "")
+    full_text = re.sub(r'\bCustomer\s+C\d{3}\b', 'your', full_text, flags=re.IGNORECASE)
+    full_text = re.sub(r"\bC\d{3}'s\b", "your", full_text, flags=re.IGNORECASE)
+    full_text = re.sub(r'\bC\d{3}\b', 'your', full_text, flags=re.IGNORECASE)
+
+    recommendations = extract_matching_recommendations(full_text)
     
-    for attempt in range(1, max_retries + 1):
+    if supabase_client:
         try:
-            response_parts = []
-            async for event in runner.run_async(user_id=internal_customer_id, session_id=session_id, new_message=adk_msg):
-                if event.content and event.content.parts:
-                    for p in event.content.parts:
-                        if p.text:
-                            response_parts.append(p.text)
-            
-            full_text = "\n".join(response_parts).strip()
-            if not full_text:
-                full_text = "I'm sorry, I couldn't generate a response. Please try again."
-            
-            # Sanitize internal customer IDs from output text
-            full_text = re.sub(r'\bCustomer\s+C\d{3}\b', 'your', full_text, flags=re.IGNORECASE)
-            full_text = re.sub(r"\bC\d{3}'s\b", "your", full_text, flags=re.IGNORECASE)
-            full_text = re.sub(r'\bC\d{3}\b', 'your', full_text, flags=re.IGNORECASE)
-            full_text = re.sub(r'\byour prefers\b', 'you prefer', full_text, flags=re.IGNORECASE)
-            full_text = re.sub(r'\byour likes\b', 'you like', full_text, flags=re.IGNORECASE)
+            supabase_client.table("messages").insert({
+                "conversation_id": session_id,
+                "role": "assistant",
+                "content": full_text,
+                "recommendations": recommendations
+            }).execute()
 
-            recommendations = extract_matching_recommendations(full_text)
-            
-            # Persist AI assistant response to Supabase DB
-            if supabase_client:
-                try:
-                    supabase_client.table("messages").insert({
-                        "conversation_id": session_id,
-                        "role": "assistant",
-                        "content": full_text,
-                        "recommendations": recommendations
-                    }).execute()
-
-                    # Update conversation title / updated_at
-                    title = generate_deterministic_title(user_msg)
-                    supabase_client.table("conversations").update({
-                        "title": title
-                    }).eq("id", session_id).execute()
-                except Exception as e:
-                    logger.warning(f"Failed to save assistant message to DB: {e}")
-
-            return ChatResponse(
-                response=full_text,
-                recommendations=recommendations,
-                session_id=session_id,
-                status="success"
-            )
-
+            title = generate_deterministic_title(user_msg)
+            supabase_client.table("conversations").update({"title": title}).eq("id", session_id).execute()
         except Exception as e:
-            err_msg = str(e)
+            logger.warning(f"Failed to save assistant message to DB: {e}")
 
-            # Categorize and log error types clearly, returning structured API responses
-            if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
-                logger.warning("Backend API Error: 429 = quota exhausted. Request failed.")
-                return JSONResponse(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    content={
-                        "error": "AI_QUOTA_EXHAUSTED",
-                        "message": "AI service usage limit reached."
-                    }
-                )
+    title = generate_deterministic_title(user_msg)
 
-            elif "503" in err_msg or "UNAVAILABLE" in err_msg or "high demand" in err_msg:
-                logger.warning(f"Backend API Warning: 503 = temporary model/service unavailability (Attempt {attempt}/{max_retries}).")
-                if attempt < max_retries:
-                    await asyncio.sleep(retry_delays[attempt - 1])
-                    continue
-                else:
-                    logger.error(f"Backend API Error: 503 = service unavailable after {max_retries} attempts.")
-                    return JSONResponse(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        content={
-                            "error": "AI_TEMPORARILY_UNAVAILABLE",
-                            "message": "AI service is temporarily unavailable."
-                        }
-                    )
-
-            elif "401" in err_msg or "403" in err_msg or "PERMISSION" in err_msg or "UNAUTHENTICATED" in err_msg:
-                logger.error("Backend API Error: 401/403 = authentication/permission problem.")
-                return JSONResponse(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    content={
-                        "error": "AI_AUTHENTICATION_ERROR",
-                        "message": "Authentication error with AI provider."
-                    }
-                )
-
-            elif "404" in err_msg or "NOT_FOUND" in err_msg:
-                logger.error("Backend API Error: 404 = invalid model/resource.")
-                return JSONResponse(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    content={
-                        "error": "AI_MODEL_NOT_FOUND",
-                        "message": "Selected Gemini model is currently unavailable."
-                    }
-                )
-
-            else:
-                logger.error(f"Backend API Error: 500 = application/server error: {err_msg}")
-                return JSONResponse(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={
-                        "error": "INTERNAL_SERVER_ERROR",
-                        "message": "Something went wrong. Please try again."
-                    }
-                )
+    return ChatResponse(
+        response=full_text,
+        recommendations=recommendations,
+        session_id=session_id,
+        title=title,
+        status="success"
+    )
 
 
 if __name__ == "__main__":
@@ -472,4 +480,3 @@ if __name__ == "__main__":
         reload=is_dev,
         reload_includes=["*.py", ".env", ".env.*"] if is_dev else None
     )
-

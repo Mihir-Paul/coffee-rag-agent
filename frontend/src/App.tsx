@@ -28,6 +28,11 @@ import {
 import { Message, CoffeeRecommendation, UserProfile, ConversationSession } from './types';
 import { supabase } from './supabaseClient';
 import { AuthModal } from './components/AuthModal';
+import { LandingPage } from './components/LandingPage';
+import { HowItWorksPage } from './components/HowItWorksPage';
+import { FeaturesPage } from './components/FeaturesPage';
+import { TechnologyPage } from './components/TechnologyPage';
+import { AppView } from './components/Navbar';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -41,11 +46,34 @@ const QUICK_ACTIONS = [
 ];
 
 export default function App() {
+  const getInitialView = (): AppView => {
+    const hash = window.location.hash;
+    const path = window.location.pathname;
+    if (hash === '#/login' || hash === '#/signin' || path === '/login' || path === '/signin') return 'auth';
+    if (hash === '#/chat' || path === '/chat') return 'chat';
+    if (hash === '#/how-it-works' || path === '/how-it-works') return 'how-it-works';
+    if (hash === '#/features' || path === '/features') return 'features';
+    if (hash === '#/technology' || path === '/technology') return 'technology';
+    return 'landing';
+  };
+
+  const [currentView, setCurrentView] = useState<AppView>(getInitialView);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDevMode, setShowDevMode] = useState(false);
+
+  // Router navigation helper
+  const navigateTo = (view: AppView) => {
+    setCurrentView(view);
+    if (view === 'landing') window.location.hash = '#/';
+    else if (view === 'how-it-works') window.location.hash = '#/how-it-works';
+    else if (view === 'features') window.location.hash = '#/features';
+    else if (view === 'technology') window.location.hash = '#/technology';
+    else if (view === 'auth') window.location.hash = '#/login';
+    else if (view === 'chat') window.location.hash = '#/chat';
+  };
 
   // Supabase Auth & User Session State
   const [userSession, setUserSession] = useState<any>(null);
@@ -203,7 +231,7 @@ export default function App() {
       {
         id: `welcome-${Date.now()}`,
         sender: 'assistant',
-        text: `Hello ${userProfile?.name || ''} 👋\n\nWhat are you in the mood for today?`,
+        text: `Hello 👋\n\nWhat are you in the mood for today?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ]);
@@ -218,7 +246,8 @@ export default function App() {
         if (res.ok) {
           const newConv = await res.json();
           setSessionId(newConv.id);
-          setConversations(prev => [newConv, ...prev]);
+          const convWithTitle = { ...newConv, title: newConv.title || 'New Chat' };
+          setConversations(prev => [convWithTitle, ...prev]);
         }
       } catch (err) {
         console.error('Failed to create new conversation:', err);
@@ -232,7 +261,6 @@ export default function App() {
 
   const sanitizeClientText = (text: string): string => {
     if (!text) return text;
-    // Replace any leftover internal customer IDs with friendly terms
     return text
       .replace(/\bCustomer\s+C\d{3}\b/gi, 'your')
       .replace(/\bC\d{3}'s\b/gi, 'your')
@@ -294,6 +322,26 @@ export default function App() {
         setSessionId(data.session_id);
       }
 
+      // Update conversations list state immediately with returned contextual title
+      if (data.title && data.session_id) {
+        setConversations(prev => {
+          const exists = prev.some(c => c.id === data.session_id);
+          if (exists) {
+            return prev.map(c => c.id === data.session_id ? { ...c, title: data.title } : c);
+          } else {
+            return [
+              {
+                id: data.session_id,
+                title: data.title,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              },
+              ...prev
+            ];
+          }
+        });
+      }
+
       const cleanedResponse = sanitizeClientText(data.response || 'I have found some options for you.');
 
       const botMsg: Message = {
@@ -340,11 +388,14 @@ export default function App() {
     }
   };
 
-  // Format active user preference badge
-  const pref = userProfile?.preferences;
-  const prefSummary = pref 
-    ? `${pref.temperature} · ${pref.sweetness} Sweet · ${pref.milk_preference} · Budget ₹${pref.budget}`
-    : 'Cold · Low Sweet · Oat Milk · Budget ₹250';
+  const handleDemoGuest = () => {
+    const mockToken = 'mock-demo-token-aarav';
+    localStorage.setItem('coffeemind_mock_token', mockToken);
+    setAuthToken(mockToken);
+    fetchUserProfile(mockToken);
+    fetchConversations(mockToken);
+    navigateTo('chat');
+  };
 
   // 1. Session Loading State: Minimal CoffeeMind loader
   if (authChecking) {
@@ -361,9 +412,62 @@ export default function App() {
     );
   }
 
-  // 2. Unauthenticated State: Show Auth Screen ONLY (No dashboard behind it)
-  if (!authToken) {
-    return <AuthModal onAuthSuccess={() => {}} />;
+  // 2. Public Landing Page View
+  if (currentView === 'landing') {
+    return (
+      <LandingPage
+        onNavigate={navigateTo}
+        isAuthenticated={!!authToken}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
+  // 3. How It Works View
+  if (currentView === 'how-it-works') {
+    return (
+      <HowItWorksPage
+        onNavigate={navigateTo}
+        isAuthenticated={!!authToken}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
+  // 4. Features View
+  if (currentView === 'features') {
+    return (
+      <FeaturesPage
+        onNavigate={navigateTo}
+        isAuthenticated={!!authToken}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
+  // 5. Technology View
+  if (currentView === 'technology') {
+    return (
+      <TechnologyPage
+        onNavigate={navigateTo}
+        isAuthenticated={!!authToken}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
+  // 6. Authentication View (or when unauthenticated attempting to view chat)
+  if (currentView === 'auth' || (!authToken && currentView === 'chat')) {
+    return (
+      <AuthModal
+        onAuthSuccess={() => navigateTo('chat')}
+        onBackToLanding={() => navigateTo('landing')}
+      />
+    );
   }
 
   // 3. Authenticated State: Render Main Dashboard
@@ -458,12 +562,12 @@ export default function App() {
           </button>
 
           {/* Recent Sessions Section */}
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1.5rem', flex: 1 }}>
             <div className="sidebar-section-header">
               <History size={14} color="var(--sidebar-text-muted)" />
-              <span>Recent Sessions</span>
+              <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', fontWeight: 600 }}>RECENT SESSIONS</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
               {conversations.length === 0 ? (
                 <button 
                   onClick={handleNewChat}
@@ -474,7 +578,7 @@ export default function App() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--sidebar-text)' }}>
-                      Current Coffee Session
+                      New Chat
                     </span>
                     <span style={{ fontSize: '0.725rem', color: 'var(--sidebar-text-muted)', marginTop: '0.15rem' }}>
                       Active
@@ -493,34 +597,15 @@ export default function App() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--sidebar-text)' }}>
-                        {conv.title || 'Coffee Session'}
+                        {conv.title || 'New Chat'}
                       </span>
                       <span style={{ fontSize: '0.725rem', color: 'var(--sidebar-text-muted)', marginTop: '0.15rem' }}>
-                        {conv.created_at ? new Date(conv.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Today'}
+                        {conv.created_at ? new Date(conv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Today'}
                       </span>
                     </div>
                   </button>
                 ))
               )}
-            </div>
-          </div>
-
-          {/* Customer Profile & Preferences Section */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div className="sidebar-section-header">
-              <User size={14} color="var(--sidebar-text-muted)" />
-              <span>Customer Profile</span>
-            </div>
-            <div className="preference-card active">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
-                <User size={14} color="var(--accent-primary)" />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--sidebar-text)' }}>
-                  {userProfile?.name || 'Authenticated Customer'}
-                </span>
-              </div>
-              <span style={{ fontSize: '0.725rem', color: 'var(--sidebar-text-muted)', marginTop: '0.25rem', lineHeight: 1.4 }}>
-                {prefSummary}
-              </span>
             </div>
           </div>
 
@@ -619,6 +704,21 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={() => navigateTo('landing')}
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                padding: '0.4rem 0.8rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border-color)',
+                color: 'var(--accent-primary)',
+                backgroundColor: 'transparent',
+                cursor: 'pointer'
+              }}
+            >
+              Landing Page
+            </button>
             <button
               onClick={handleNewChat}
               style={{

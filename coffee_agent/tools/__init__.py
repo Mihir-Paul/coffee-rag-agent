@@ -1,13 +1,21 @@
+"""CoffeeMind AI ADK Tools Package."""
+
 import json
 import logging
 from typing import Any, Dict, List, Optional
 from coffee_agent.config import MENU_FILE_PATH, CUSTOMERS_FILE_PATH
 
+from coffee_agent.tools.coffee_rag import search_coffee_knowledge, rag_search
+from coffee_agent.tools.calculator import calculate_coffee_brew, calculate_order_total
+from coffee_agent.tools.recipes import generate_coffee_recipe
+from coffee_agent.tools.preferences import get_customer_preferences
+from coffee_agent.tools.memories import get_customer_memories, save_customer_memory
+from coffee_agent.tools.troubleshooting import troubleshoot_coffee_brew
+
 logger = logging.getLogger(__name__)
 
 
 def _load_menu_data() -> List[Dict[str, Any]]:
-    """Helper to load menu data from JSON file."""
     if not MENU_FILE_PATH.exists():
         logger.error(f"Menu data file not found at {MENU_FILE_PATH}")
         return []
@@ -16,7 +24,6 @@ def _load_menu_data() -> List[Dict[str, Any]]:
 
 
 def _load_customers_data() -> List[Dict[str, Any]]:
-    """Helper to load customer data from JSON file."""
     if not CUSTOMERS_FILE_PATH.exists():
         logger.error(f"Customers data file not found at {CUSTOMERS_FILE_PATH}")
         return []
@@ -30,38 +37,21 @@ def search_menu(
     category: Optional[str] = None,
     temperature: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Search the coffee shop menu by text query, price budget, category, or temperature.
-
-    Args:
-        query: Search keywords to look for in product name, category, or description (e.g. 'cold', 'latte', 'sweet', 'dairy').
-        max_price: Maximum price budget in INR (e.g. 200.0).
-        category: Specific product category (e.g. 'Coffee', 'Cold Coffee', 'Frappe', 'Tea', 'Beverage').
-        temperature: Preferred beverage temperature ('Hot' or 'Cold').
-
-    Returns:
-        List of matching menu items with full product details.
-    """
+    """Search the coffee shop menu by text query, price budget, category, or temperature."""
     items = _load_menu_data()
     results = []
     query_clean = query.strip().lower()
 
     for item in items:
-        # Price check
         if max_price is not None and item.get("price_inr", 0) > max_price:
             continue
-
-        # Temperature check
         if temperature and item.get("temperature", "").lower() != temperature.strip().lower():
             continue
-
-        # Category check
         if category and category.strip().lower() not in item.get("category", "").lower():
             continue
 
-        # Query matching
         if query_clean and query_clean not in ["all", "menu", "coffees", "anything"]:
             matched = False
-            # Check fields
             searchable_text = " ".join([
                 item.get("name", ""),
                 item.get("category", ""),
@@ -73,12 +63,10 @@ def search_menu(
                 " ".join(item.get("allergens", []))
             ]).lower()
 
-            # Direct string inclusion or sub-word match
             keywords = query_clean.split()
             if all(kw in searchable_text for kw in keywords):
                 matched = True
 
-            # Special non-dairy / dairy search handling
             if "dairy" in query_clean:
                 if "no dairy" in query_clean or "dairy-free" in query_clean or "don't drink dairy" in query_clean or "without dairy" in query_clean:
                     if item.get("milk") in ["None", "Oat Milk"] and "Milk" not in item.get("allergens", []):
@@ -95,15 +83,7 @@ def search_menu(
 
 
 def get_customer_profile(customer_id: str) -> Dict[str, Any]:
-    """Retrieve customer preferences and profile by Customer ID.
-
-    Args:
-        customer_id: The unique customer identifier (e.g. 'C001').
-
-    Returns:
-        Dictionary containing customer preferences (temperature, sweetness, milk, budget, dietary restrictions)
-        or an error message if not found.
-    """
+    """Retrieve customer preferences and profile by Customer ID."""
     customers = _load_customers_data()
     clean_id = customer_id.strip().upper()
 
@@ -116,19 +96,12 @@ def get_customer_profile(customer_id: str) -> Dict[str, Any]:
 
     return {
         "status": "error",
-        "message": f"Customer ID '{customer_id}' not found. Please verify the ID."
+        "message": f"Customer ID '{customer_id}' not found."
     }
 
 
 def get_menu_item(item_id: str) -> Dict[str, Any]:
-    """Lookup a single menu item by its ID or exact product name.
-
-    Args:
-        item_id: Menu item ID (e.g. 'M001') or exact name (e.g. 'Espresso').
-
-    Returns:
-        Dictionary containing product details or an error message if missing.
-    """
+    """Lookup a single menu item by its ID or exact product name."""
     items = _load_menu_data()
     clean_target = item_id.strip().lower()
 
@@ -143,3 +116,19 @@ def get_menu_item(item_id: str) -> Dict[str, Any]:
         "status": "error",
         "message": f"Menu item '{item_id}' not found."
     }
+
+
+__all__ = [
+    "search_menu",
+    "get_customer_profile",
+    "get_menu_item",
+    "search_coffee_knowledge",
+    "rag_search",
+    "calculate_coffee_brew",
+    "calculate_order_total",
+    "generate_coffee_recipe",
+    "get_customer_preferences",
+    "get_customer_memories",
+    "save_customer_memory",
+    "troubleshoot_coffee_brew"
+]

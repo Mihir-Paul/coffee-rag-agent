@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Coffee, 
-  User, 
-  AlertCircle, 
-  ArrowRight,
-  Code2 
-} from 'lucide-react';
-import { GrainGradient } from "@paper-design/shaders-react";
+import { Coffee, AlertCircle, User, ArrowLeft } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface AuthModalProps {
   onAuthSuccess?: () => void;
+  onBackToLanding?: () => void;
 }
 
 const GoogleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" className="shrink-0" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }} aria-hidden="true">
     <path
       fill="#4285F4"
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -34,69 +28,21 @@ const GoogleIcon = () => (
   </svg>
 );
 
-/* Signature Visual Element: Espresso Machine Pressure Gauge Dial */
-const EspressoPressureGauge = () => {
-  return (
-    <div className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center shrink-0">
-      {/* SVG Arc Gauge */}
-      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
-        {/* Track */}
-        <circle
-          cx="60"
-          cy="60"
-          r="48"
-          fill="none"
-          stroke="rgba(255, 255, 255, 0.1)"
-          strokeWidth="7"
-          strokeDasharray="226 75"
-          strokeLinecap="round"
-        />
-        {/* Highlighted Ember Extraction Arc */}
-        <circle
-          cx="60"
-          cy="60"
-          r="48"
-          fill="none"
-          stroke="#E05A10"
-          strokeWidth="7"
-          strokeDasharray="170 130"
-          strokeDashoffset="0"
-          strokeLinecap="round"
-        />
-      </svg>
-
-      {/* Dial Center Reading */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-3xl sm:text-4xl font-bold font-sans tracking-tight text-white">
-          9.0
-        </span>
-        <span className="text-[10px] tracking-widest font-semibold text-[#E05A10] uppercase mt-0.5">
-          BAR PRESSURE
-        </span>
-        <span className="text-[9px] text-white/50 tracking-wider uppercase mt-1">
-          Optimal Zone
-        </span>
-      </div>
-    </div>
-  );
-};
-
-export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess, onBackToLanding }) => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingType, setLoadingType] = useState<'google' | 'email' | 'demo-aarav' | 'demo-priya' | null>(null);
+  const [loadingType, setLoadingType] = useState<'google' | 'email' | 'demo' | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [showDevPanel, setShowDevPanel] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
     setLoading(true);
     setLoadingType('google');
     try {
-      console.log('Google OAuth initiated');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -108,7 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
       console.error('Google Sign-In error:', err);
       let msg = err.message || 'Google Sign-In failed.';
       if (msg.includes('provider is not enabled') || msg.includes('Unsupported provider')) {
-        msg = 'Google Sign-In is not enabled in your Supabase Dashboard. Please enable Google Provider under Authentication -> Providers -> Google.';
+        msg = 'Google Sign-In is currently disabled on Supabase setup. Try Demo Guest mode instead!';
       }
       setErrorMsg(msg);
     } finally {
@@ -149,8 +95,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
         if (data.session) {
           if (onAuthSuccess) onAuthSuccess();
         } else {
-          setErrorMsg('Account created successfully! Please sign in with your credentials.');
+          setErrorMsg('Account created successfully! Please sign in.');
           setIsSignUp(false);
+          setShowEmailForm(true);
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -163,11 +110,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
       }
     } catch (err: any) {
       console.error('Supabase Auth error:', err);
-      let friendlyMessage = err.message || 'Authentication failed. Please check your details.';
+      let friendlyMessage = err.message || 'Authentication failed. Please check your credentials.';
       if (friendlyMessage.includes('Invalid login credentials')) {
-        friendlyMessage = 'Invalid email or password. Please double check and try again.';
+        friendlyMessage = 'Invalid email or password. Please try again.';
       } else if (friendlyMessage.includes('User already registered')) {
-        friendlyMessage = 'An account with this email already exists. Please sign in instead.';
+        friendlyMessage = 'An account with this email already exists. Please sign in.';
       }
       setErrorMsg(friendlyMessage);
     } finally {
@@ -176,11 +123,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  const handleDemoSignIn = async (demoName: 'Aarav' | 'Priya') => {
+  const handleDemoSignIn = async () => {
     setErrorMsg(null);
     setLoading(true);
-    setLoadingType(demoName === 'Aarav' ? 'demo-aarav' : 'demo-priya');
-    const demoEmail = demoName === 'Aarav' ? 'aarav@coffeemind.ai' : 'priya@coffeemind.ai';
+    setLoadingType('demo');
+    const demoEmail = 'aarav@coffeemind.ai';
     const demoPass = 'coffeemind123';
 
     try {
@@ -193,17 +140,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
         const signUpRes = await supabase.auth.signUp({
           email: demoEmail,
           password: demoPass,
-          options: { data: { name: demoName } }
+          options: { data: { name: 'Aarav' } }
         });
         if (signUpRes.error) {
-          localStorage.setItem('coffeemind_mock_token', demoName === 'Aarav' ? 'test-aarav-token' : 'test-priya-token');
+          localStorage.setItem('coffeemind_mock_token', 'test-aarav-token');
           window.location.reload();
           return;
         }
       }
       if (onAuthSuccess) onAuthSuccess();
     } catch (err) {
-      localStorage.setItem('coffeemind_mock_token', demoName === 'Aarav' ? 'test-aarav-token' : 'test-priya-token');
+      localStorage.setItem('coffeemind_mock_token', 'test-aarav-token');
       window.location.reload();
     } finally {
       setLoading(false);
@@ -212,281 +159,511 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F5EFEB] dark:bg-[#14100D] font-sans antialiased text-[#2A1810] dark:text-[#F0EADF]">
-      
-      {/* LEFT PANEL (~45% width, Warm Parchment Background, Collapses under 880px) */}
-      <div className="w-full min-[880px]:w-[45%] h-full p-8 sm:p-12 lg:p-14 flex flex-col justify-between overflow-y-auto bg-[#F5EFEB] dark:bg-[#14100D]">
+    <div className="auth-page-bg">
+      <div className="auth-card-container">
         
-        {/* Top Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-[6px] bg-[#2A1810] dark:bg-[#F0EADF] text-[#F5EFEB] dark:text-[#2A1810] flex items-center justify-center shrink-0">
-              <Coffee className="w-4 h-4" />
-            </div>
-            <span className="font-sans font-medium text-base text-[#2A1810] dark:text-[#F0EADF] tracking-tight">
-              CoffeeMind AI
-            </span>
-          </div>
+        {/* LEFT CARD — SIGN-IN (Fit in 100vh) */}
+        <div className="auth-left-card">
+          
+          {onBackToLanding && (
+            <button
+              type="button"
+              onClick={onBackToLanding}
+              style={{
+                position: 'absolute',
+                top: 'clamp(20px, 3.5vh, 36px)',
+                left: 'clamp(20px, 3.5vh, 36px)',
+                fontFamily: "'Inter', sans-serif",
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#d9a441',
+                backgroundColor: 'rgba(217, 164, 65, 0.12)',
+                border: '1px solid rgba(217, 164, 65, 0.3)',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                cursor: 'pointer',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <ArrowLeft size={13} />
+              <span>Back to Home</span>
+            </button>
+          )}
 
+          {/* Plain underlined text link, absolute top-right corner */}
           <button
             type="button"
-            onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(null); }}
-            className="text-xs font-medium text-[#2A1810]/70 dark:text-[#F0EADF]/70 hover:text-[#2A1810] dark:hover:text-[#F0EADF] underline underline-offset-2 transition-colors cursor-pointer"
+            onClick={() => { 
+              setIsSignUp(!isSignUp); 
+              setErrorMsg(null); 
+              setShowEmailForm(false); 
+            }}
+            style={{
+              position: 'absolute',
+              top: 'clamp(20px, 3.5vh, 36px)',
+              right: 'clamp(20px, 3.5vh, 36px)',
+              fontFamily: "'Inter', sans-serif",
+              fontSize: '12px',
+              fontWeight: 500,
+              color: '#f2e8da',
+              textDecoration: 'underline',
+              textUnderlineOffset: '4px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              zIndex: 10
+            }}
           >
             {isSignUp ? 'Sign in' : 'Create account'}
           </button>
-        </div>
 
-        {/* Form Container (Single column, spacious) */}
-        <div className="w-full max-w-[400px] my-auto py-6 space-y-5">
-          
-          {/* Headline (Serif display face ONLY here) */}
-          <div className="space-y-1.5">
-            <h1 className="font-serif text-3xl min-[880px]:text-[40px] font-bold text-[#2A1810] dark:text-[#F0EADF] leading-tight">
-              {isSignUp ? 'Create account' : 'Welcome back'}
-            </h1>
-            <p className="font-sans text-sm text-[#2A1810]/60 dark:text-[#F0EADF]/60 font-normal">
-              {isSignUp ? 'Build your personalized AI coffee profile.' : 'Continue your AI-powered coffee journey.'}
-            </p>
-          </div>
-
-          {/* OAuth Buttons (Pill shaped, semi-transparent white fill, thin 1px border) */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="h-10 px-3 rounded-full border border-[#2A1810]/15 dark:border-white/15 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-[#2A1810] dark:text-[#F0EADF] text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <GoogleIcon />
-              <span className="truncate">{loadingType === 'google' ? 'Connecting...' : 'Google'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDemoSignIn('Aarav')}
-              disabled={loading}
-              className="h-10 px-3 rounded-full border border-[#2A1810]/15 dark:border-white/15 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-[#2A1810] dark:text-[#F0EADF] text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <User className="w-3.5 h-3.5 text-[#2A1810]/60 dark:text-[#F0EADF]/60" />
-              <span className="truncate">Demo User</span>
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="relative flex items-center justify-center my-4">
-            <div className="w-full h-px bg-[#2A1810]/10 dark:bg-white/10" />
-            <span className="absolute bg-[#F5EFEB] dark:bg-[#14100D] px-3 text-[10px] font-semibold tracking-wider text-[#2A1810]/40 dark:text-[#F0EADF]/40 uppercase">
-              or with email
-            </span>
-          </div>
-
-          {/* Inline Error Alert */}
-          {errorMsg && (
-            <div className="p-3 rounded-[9px] bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-xs flex items-center gap-2 animate-fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+          {/* TOP ROW: Icon tile + wordmark "CoffeeMind" & "AI BARISTA" tag */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: 'clamp(20px, 3.5vh, 36px)' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '11px',
+              backgroundColor: '#271e17',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Coffee size={19} color="#f2e8da" />
             </div>
-          )}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: '17px', letterSpacing: '-0.02em', color: '#f2e8da', lineHeight: 1.2 }}>
+                CoffeeMind
+              </span>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#d9a441', marginTop: '2px', lineHeight: 1 }}>
+                AI BARISTA
+              </span>
+            </div>
+          </div>
 
-          {/* Form Fields: rounded ~9px, soft semi-transparent white fill, warm accent focus ring */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 block">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Aarav Sharma"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full h-11 px-4 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 dark:border-white/10 text-[#2A1810] dark:text-[#F0EADF] placeholder:#2A1810/35 text-sm focus:outline-none focus:ring-2 focus:ring-[#C85A17]/40 focus:border-[#C85A17] transition-all"
-                  required
-                />
+          {/* MAIN STACKED CONTENT AREA (Top-anchored) */}
+          <div style={{ width: '100%', maxWidth: '400px' }}>
+            
+            {/* HEADLINE: BOLD SANS-SERIF (~32px), tight letter-spacing */}
+            <div style={{ marginBottom: 'clamp(14px, 2.2vh, 22px)' }}>
+              <h1 style={{ fontFamily: "'Inter', sans-serif", fontSize: 'clamp(26px, 3.8vh, 33px)', fontWeight: 800, color: '#f2e8da', lineHeight: 1.12, letterSpacing: '-0.03em', margin: '0 0 8px 0' }}>
+                {isSignUp ? 'Create account' : 'Welcome back'}
+              </h1>
+              <p style={{ fontFamily: "'Inter', sans-serif", fontSize: 'clamp(12px, 1.6vh, 14px)', color: '#a99a8c', lineHeight: 1.45, margin: 0, maxWidth: '400px' }}>
+                {isSignUp 
+                  ? 'Join CoffeeMind AI to unlock personalized roasts and custom espresso taste profiles.' 
+                  : 'Sign in to access your custom roast preferences and personalized AI coffee recommendations.'}
+              </p>
+            </div>
+
+            {/* ERROR ALERT */}
+            {errorMsg && (
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(127, 29, 29, 0.4)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#fecaca',
+                fontFamily: "'Inter', sans-serif",
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                marginBottom: '16px'
+              }}>
+                <AlertCircle size={15} color="#f87171" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{errorMsg}</span>
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 block">
-                Email Address
-              </label>
-              <input
-                type="email"
-                placeholder="harshitlog@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 px-4 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 dark:border-white/10 text-[#2A1810] dark:text-[#F0EADF] placeholder:#2A1810/35 text-sm focus:outline-none focus:ring-2 focus:ring-[#C85A17]/40 focus:border-[#C85A17] transition-all"
-                required
-              />
-            </div>
+            {/* DEFAULT UNCLUTTERED VIEW: BUTTONS ONLY */}
+            {!showEmailForm ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(10px, 1.5vh, 14px)' }}>
+                
+                {/* 1. PRIMARY BUTTON: Full-width pill, min-height 44px, solid cream surface, dark text */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    maxWidth: '400px',
+                    minHeight: '44px',
+                    padding: '10px 20px',
+                    borderRadius: '999px',
+                    backgroundColor: '#f2e8da',
+                    color: '#1b140f',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    fontFamily: "'Inter', sans-serif",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    border: 'none',
+                    boxSizing: 'border-box',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    appearance: 'none',
+                    WebkitAppearance: 'none'
+                  }}
+                >
+                  {loading && loadingType === 'google' ? (
+                    <div style={{ width: '16px', height: '16px', border: '2px solid #1b140f', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  <span style={{ color: '#1b140f', fontWeight: 700 }}>Continue with Google</span>
+                </button>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 block">
-                  Password
-                </label>
-                {!isSignUp && (
+                {/* 2. SECONDARY BUTTON: Full-width pill, min-height 44px, visible 1.5px dashed border & subtle bg */}
+                <button
+                  type="button"
+                  onClick={handleDemoSignIn}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    maxWidth: '400px',
+                    minHeight: '44px',
+                    padding: '10px 20px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                    border: '1.5px dashed rgba(242, 232, 218, 0.35)',
+                    color: '#f2e8da',
+                    fontWeight: 500,
+                    fontSize: '13px',
+                    fontFamily: "'Inter', sans-serif",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    boxSizing: 'border-box',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    WebkitAppearance: 'none'
+                  }}
+                >
+                  {loading && loadingType === 'demo' ? (
+                    <div style={{ width: '15px', height: '15px', border: '2px solid #f2e8da', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <User size={15} color="#a99a8c" />
+                  )}
+                  <span style={{ color: '#f2e8da', fontWeight: 500 }}>Continue as Guest (Demo Mode)</span>
+                </button>
+
+                {/* PLAIN THIN HAIRLINE DIVIDER below buttons */}
+                <div style={{ margin: 'clamp(10px, 1.8vh, 16px) 0', width: '100%', maxWidth: '400px' }}>
+                  <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', width: '100%' }} />
+                </div>
+
+                {/* CENTERED PILL BADGE below divider */}
+                <div style={{ display: 'flex', justifyContent: 'center', width: '100%', maxWidth: '400px' }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '5px 14px',
+                    borderRadius: '999px',
+                    backgroundColor: 'rgba(217, 164, 65, 0.12)',
+                    border: '1px solid rgba(217, 164, 65, 0.35)',
+                    color: '#d9a441',
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase'
+                  }}>
+                    <span style={{ fontSize: '11px' }}>☕</span>
+                    <span>RAG-GROUNDED · V2.4</span>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              /* INLINE EMAIL FORM VIEW */
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '2px' }}>
+                {isSignUp && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 500, color: '#a99a8c', marginBottom: '3px' }}>Full Name</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Alex Morgan"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        borderRadius: '999px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: '#f2e8da',
+                        fontSize: '13px',
+                        minHeight: '44px',
+                        boxSizing: 'border-box',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 500, color: '#a99a8c', marginBottom: '3px' }}>Email address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="barista@coffeemind.ai"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      borderRadius: '999px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#f2e8da',
+                      fontSize: '13px',
+                      minHeight: '44px',
+                      boxSizing: 'border-box',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 500, color: '#a99a8c', marginBottom: '3px' }}>Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      borderRadius: '999px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#f2e8da',
+                      fontSize: '13px',
+                      minHeight: '44px',
+                      boxSizing: 'border-box',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', paddingTop: '4px' }}>
                   <button
                     type="button"
-                    onClick={() => setErrorMsg('Password reset instructions will be sent to your email.')}
-                    className="text-xs text-[#C85A17] hover:underline font-medium"
+                    onClick={() => setShowEmailForm(false)}
+                    style={{
+                      width: '33%',
+                      minHeight: '44px',
+                      padding: '10px',
+                      borderRadius: '999px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: '#a99a8c',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      cursor: 'pointer'
+                    }}
                   >
-                    Forgot password?
+                    <ArrowLeft size={13} />
+                    <span>Back</span>
                   </button>
-                )}
-              </div>
-              <input
-                type="password"
-                placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-11 px-4 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 dark:border-white/10 text-[#2A1810] dark:text-[#F0EADF] placeholder:#2A1810/35 text-sm focus:outline-none focus:ring-2 focus:ring-[#C85A17]/40 focus:border-[#C85A17] transition-all"
-                required
-              />
-            </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      width: '67%',
+                      minHeight: '44px',
+                      padding: '10px',
+                      borderRadius: '999px',
+                      backgroundColor: '#f2e8da',
+                      color: '#1b140f',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {loading && loadingType === 'email' ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                  </button>
+                </div>
+              </form>
+            )}
 
-            {/* Checkbox + Terms */}
-            <div className="pt-1 flex items-start gap-2.5 text-xs text-[#2A1810]/60 dark:text-[#F0EADF]/60">
-              <input
-                type="checkbox"
-                id="terms"
-                defaultChecked
-                className="mt-0.5 rounded border-[#2A1810]/20 text-[#2A1810] focus:ring-0"
-              />
-              <label htmlFor="terms" className="leading-snug">
-                By signing in, you agree to our{' '}
-                <a href="#" className="text-[#2A1810] dark:text-[#F0EADF] underline font-bold">Terms of Service</a>{' '}
-                and{' '}
-                <a href="#" className="text-[#2A1810] dark:text-[#F0EADF] underline font-bold">Privacy Policy</a>.
-              </label>
-            </div>
-
-            {/* Full-width primary button, solid dark roast-brown fill, warm parchment text */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12 mt-2 rounded-[9px] bg-[#2A1810] dark:bg-[#F0EADF] text-[#F5EFEB] dark:text-[#2A1810] font-semibold text-sm flex items-center justify-center transition-all hover:bg-[#3D251A] dark:hover:bg-[#E5DEC] cursor-pointer disabled:opacity-50 shadow-sm"
-            >
-              {loadingType === 'email' ? (
-                <span>{isSignUp ? 'Creating account...' : 'Signing in...'}</span>
-              ) : isSignUp ? (
-                <span>Create Account</span>
-              ) : (
-                <span>Sign In</span>
-              )}
-            </button>
-          </form>
-
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-[#2A1810]/40 dark:text-[#F0EADF]/40 pt-4 border-t border-[#2A1810]/5 dark:border-white/5">
-          <span>© 2026 CoffeeMind AI</span>
-          <button 
-            type="button"
-            onClick={() => setShowDevPanel(!showDevPanel)}
-            className="hover:text-[#2A1810] dark:hover:text-[#F0EADF] transition-colors text-[11px]"
-          >
-            Dev Access
-          </button>
-        </div>
-
-        {/* Dev Drawer */}
-        {showDevPanel && (
-          <div className="mt-2 p-3 rounded-[9px] bg-white/70 dark:bg-white/5 border border-[#2A1810]/10 text-xs space-y-2 animate-fade-in">
-            <p className="font-semibold text-[#2A1810]/70 dark:text-[#F0EADF]/70 text-[11px]">Developer Test Profiles</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoSignIn('Aarav')}
-                disabled={loading}
-                className="py-1.5 px-2.5 rounded border border-[#2A1810]/10 bg-white dark:bg-[#14100D] text-[#2A1810] dark:text-[#F0EADF] text-left flex items-center justify-between cursor-pointer text-[11px]"
-              >
-                <span>Sign in Aarav</span>
-                <ArrowRight className="w-3 h-3 text-[#C85A17]" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoSignIn('Priya')}
-                disabled={loading}
-                className="py-1.5 px-2.5 rounded border border-[#2A1810]/10 bg-white dark:bg-[#14100D] text-[#2A1810] dark:text-[#F0EADF] text-left flex items-center justify-between cursor-pointer text-[11px]"
-              >
-                <span>Sign in Priya</span>
-                <ArrowRight className="w-3 h-3 text-[#C85A17]" />
-              </button>
-            </div>
           </div>
-        )}
 
-      </div>
-
-      {/* RIGHT PANEL (~55% width, near-black background, warm ember-orange glow bottom-right, Hidden under 880px) */}
-      <div className="hidden min-[880px]:flex min-[880px]:w-[55%] h-full relative overflow-hidden bg-[#0B0806] text-white p-10 lg:p-14 flex-col justify-between">
-        
-        {/* Film-grain texture background */}
-        <GrainGradient
-          speed={1}
-          scale={1}
-          rotation={0}
-          offsetX={0}
-          offsetY={0}
-          softness={0.5}
-          intensity={0.5}
-          noise={0.25}
-          shape="corners"
-          frame={2854.5}
-          colors={["#FFFFFF", "#E05A10", "#E05A10", "#FFFFFF"]}
-          colorBack="#00000000"
-          className="absolute inset-0 bg-black opacity-80 pointer-events-none"
-        />
-
-        {/* Warm Ember-Orange Radial Gradient Glow (Bottom-Right) */}
-        <div 
-          className="absolute -bottom-20 -right-20 w-[480px] h-[480px] rounded-full opacity-35 blur-3xl pointer-events-none"
-          style={{ background: 'radial-gradient(circle, #E05A10 0%, transparent 70%)' }}
-        />
-
-        {/* Top Badges */}
-        <div className="relative z-10 flex items-center justify-between">
-          <span className="px-3 py-1 rounded-full border border-white/20 text-[10px] tracking-widest text-white/80 font-semibold uppercase">
-            v2.4 RAG ENGINE
-          </span>
-          <span className="px-3 py-1 rounded-full border border-[#E05A10]/40 bg-[#E05A10]/10 text-[10px] tracking-widest text-[#E05A10] font-semibold uppercase">
-            AI BARISTA ACTIVE
-          </span>
         </div>
 
-        {/* Signature Visual Element & Copy Section */}
-        <div className="relative z-10 my-auto py-8 max-w-[540px] space-y-6">
+        {/* RIGHT CARD — REAL PHOTOGRAPHY (Fit in 100vh) */}
+        <div className="auth-right-card">
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            {/* Signature Element: Espresso Machine Pressure Gauge */}
-            <EspressoPressureGauge />
+          {/* Full-bleed café photograph background */}
+          <img
+            src="/cafe_hero.jpg"
+            alt="Specialty Café Espresso Bar"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center'
+            }}
+          />
 
-            {/* Right Side Headline & Copy */}
-            <div className="space-y-3">
-              {/* Short two-line headline in SERIF display face with solid accent color swap */}
-              <h2 className="font-serif text-2xl lg:text-3xl font-bold leading-snug text-white">
-                Precision extraction meets <span className="text-[#E05A10]">AI intelligence.</span>
-              </h2>
+          {/* Dark gradient overlay top-to-bottom */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to bottom, rgba(13, 10, 8, 0.88) 0%, rgba(13, 10, 8, 0.35) 40%, rgba(13, 10, 8, 0.92) 100%)',
+            pointerEvents: 'none'
+          }} />
 
-              <p className="font-sans text-xs lg:text-sm text-white/70 font-normal leading-relaxed">
-                CoffeeMind analyzes extraction variables, bean origin, and roast density to deliver real-time recommendations grounded in our custom coffee knowledge base.
-              </p>
+          {/* TOP-LEFT: Partner credential tile */}
+          <div style={{
+            position: 'relative',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            backgroundColor: 'rgba(13, 10, 8, 0.65)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            padding: '8px 14px 8px 8px',
+            borderRadius: '14px',
+            width: 'fit-content'
+          }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '10px',
+              backgroundColor: '#271e17',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Coffee size={16} color="#f2e8da" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: '13px', color: '#f2e8da', lineHeight: 1.2 }}>
+                Artisan Roast Lab
+              </span>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', color: '#a99a8c', lineHeight: 1.2, marginTop: '2px' }}>
+                San Francisco, CA • Verified Partner ✓
+              </span>
+            </div>
+          </div>
+
+          {/* MIDDLE: Testimonial Pull-Quote */}
+          <div style={{
+            position: 'relative',
+            zIndex: 10,
+            maxWidth: '420px',
+            marginTop: 'clamp(16px, 3.5vh, 32px)',
+            marginBottom: '12px'
+          }}>
+            <blockquote style={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 'clamp(18px, 2.8vh, 24px)',
+              lineHeight: '1.25',
+              color: '#f2e8da',
+              fontWeight: 400,
+              margin: 0,
+              letterSpacing: '-0.01em',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}>
+              “CoffeeMind's RAG recommendation engine boosted our specialty bean sales by 34%. It understands our daily roast notes better than our best baristas.”
+            </blockquote>
+            <p style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: '10.5px',
+              fontWeight: 600,
+              color: '#a99a8c',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              marginTop: '10px'
+            }}>
+              — Marcus Vance, Founder & Head Roaster
+            </p>
+          </div>
+
+          {/* FLOATING IN BOTTOM-RIGHT CORNER: Compact Browser Mockup Card */}
+          <div style={{
+            position: 'absolute',
+            bottom: 'clamp(16px, 2.5vh, 24px)',
+            right: 'clamp(16px, 2.5vh, 24px)',
+            zIndex: 20,
+            width: 'clamp(220px, 23vw, 265px)',
+            borderRadius: '14px',
+            backgroundColor: '#1b140f',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.85)',
+            overflow: 'hidden'
+          }}>
+            {/* macOS Header */}
+            <div style={{
+              height: '26px',
+              padding: '0 10px',
+              backgroundColor: '#130e0a',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#ff5f56' }} />
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#ffbd2e' }} />
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#27c93f' }} />
+              </div>
+              <div style={{
+                padding: '1px 8px',
+                borderRadius: '5px',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                fontSize: '8.5px',
+                color: '#a99a8c',
+                fontFamily: "'Inter', sans-serif"
+              }}>
+                coffeemind.ai/chat
+              </div>
+              <div style={{ width: '20px' }} />
+            </div>
+
+            {/* Dashboard Preview */}
+            <div style={{ position: 'relative', aspectRatio: '16 / 10', overflow: 'hidden', backgroundColor: '#0d0a08' }}>
+              <img
+                src="/app_preview.jpg"
+                alt="CoffeeMind AI Barista App Preview"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             </div>
           </div>
 
         </div>
 
-        {/* Footer info */}
-        <div className="relative z-10 flex items-center justify-between pt-4 border-t border-white/10 text-[11px] text-white/40 font-sans">
-          <span>Grounded RAG Coffee Engine</span>
-          <span>CoffeeMind AI System</span>
-        </div>
-
       </div>
-
     </div>
   );
 };

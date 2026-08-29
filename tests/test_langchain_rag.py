@@ -33,7 +33,7 @@ def test_langchain_keyword_search_fallback():
     matches = rag_engine.query("Iced Vanilla Latte")
     assert len(matches) > 0
     assert "Iced Vanilla Latte" in matches[0]["text"]
-    assert matches[0]["source"] in ["langchain_vector_store", "langchain_keyword_fallback", "gemini_embedding_vector_store"]
+    assert matches[0]["source"] in ["embedding_rag", "keyword_fallback", "langchain_vector_store", "langchain_keyword_fallback", "gemini_embedding_vector_store"]
 
 
 def test_adk_tool_integration():

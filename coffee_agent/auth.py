@@ -137,25 +137,38 @@ async def resolve_customer_mapping(auth_user_id: str, email: str, name: str) -> 
             assigned_customer_id = _allocate_internal_customer_id(name, email)
 
             # Insert new customer record linked to auth_user_id
-            new_cust = supabase_client.table("customers").insert({
-                "auth_user_id": auth_user_id,
-                "customer_id": assigned_customer_id,
-                "name": name
-            }).execute()
+            try:
+                new_cust = supabase_client.table("customers").insert({
+                    "auth_user_id": auth_user_id,
+                    "customer_id": assigned_customer_id,
+                    "name": name,
+                    "email": email
+                }).execute()
 
-            db_cust_id = None
-            if new_cust.data:
-                db_cust_id = new_cust.data[0]["id"]
-                # Insert initial preferences
-                _create_default_preferences_in_db(db_cust_id, assigned_customer_id)
+                db_cust_id = None
+                if new_cust.data and len(new_cust.data) > 0:
+                    db_cust_id = new_cust.data[0]["id"]
+                    _create_default_preferences_in_db(db_cust_id, assigned_customer_id)
 
-            return AuthenticatedUser(
-                auth_user_id=auth_user_id,
-                email=email,
-                name=name,
-                internal_customer_id=assigned_customer_id,
-                db_customer_id=db_cust_id
-            )
+                return AuthenticatedUser(
+                    auth_user_id=auth_user_id,
+                    email=email,
+                    name=name,
+                    internal_customer_id=assigned_customer_id,
+                    db_customer_id=db_cust_id
+                )
+            except Exception as insert_err:
+                # Re-query in case automatic DB trigger created the record concurrently
+                retry_res = supabase_client.table("customers").select("*").eq("auth_user_id", auth_user_id).execute()
+                if retry_res.data and len(retry_res.data) > 0:
+                    cust = retry_res.data[0]
+                    return AuthenticatedUser(
+                        auth_user_id=auth_user_id,
+                        email=email,
+                        name=cust.get("name", name),
+                        internal_customer_id=cust.get("customer_id", assigned_customer_id),
+                        db_customer_id=cust.get("id")
+                    )
 
         except Exception as e:
             logger.error(f"Error querying/creating customer in Supabase: {e}")
