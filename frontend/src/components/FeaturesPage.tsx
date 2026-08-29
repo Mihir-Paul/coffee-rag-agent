@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Sparkles, ShieldCheck, DollarSign, CheckCircle2, Sliders } from 'lucide-react';
+import { ArrowRight, ShieldCheck, DollarSign, CheckCircle2, Sliders } from 'lucide-react';
 import { Navbar, AppView } from './Navbar';
 
 interface FeaturesPageProps {
@@ -16,9 +16,7 @@ export const FeaturesPage: React.FC<FeaturesPageProps> = ({
   onToggleTheme,
 }) => {
   return (
-    <div className="page-wrapper-fit min-h-screen bg-[#FDF9F3] dark:bg-[#0D0A08] text-[#2B1B10] dark:text-[#F5EAD9] transition-colors duration-300 font-sans">
-      
-      {/* Shared Navbar */}
+    <>
       <Navbar
         onNavigate={onNavigate}
         currentView="features"
@@ -27,111 +25,107 @@ export const FeaturesPage: React.FC<FeaturesPageProps> = ({
         onToggleTheme={onToggleTheme}
       />
 
-      <main className="page-main flex-1 flex flex-col justify-between py-2 lg:py-3">
-        <section className="section-container flex-1 flex flex-col justify-between my-auto">
-          
-          {/* Centered Section Header */}
-          <header className="section-header !pt-2 sm:!pt-4 !mb-3 sm:!mb-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B85C2C]/10 dark:bg-[#B85C2C]/20 border border-[#B85C2C]/30 text-[11px] font-semibold text-[#B85C2C] dark:text-[#D9A441] mb-2">
-              <Sparkles className="w-3 h-3" />
-              <span>FEATURES</span>
+      <main style={{ padding: '40px 44px 56px', maxWidth: '1240px', margin: '0 auto' }}>
+        <header style={{ textAlign: 'center', marginBottom: '44px' }}>
+          <span className="badge">✦ FEATURES</span>
+          <h1 className="headline display" style={{ fontSize: '42px', marginTop: '12px' }}>
+            Built for better coffee decisions.
+          </h1>
+          <p className="lead" style={{ margin: '16px auto 0', maxWidth: '680px' }}>
+            Designed with state-of-the-art AI architecture to deliver accurate, non-hallucinated recommendations.
+          </p>
+        </header>
+
+        <section style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: '20px',
+          marginBottom: '56px'
+        }}>
+          <article className="stat-card">
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '10px',
+              background: 'rgba(217,164,65,0.16)', color: 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: '14px'
+            }}>
+              <Sliders size={18} style={{ margin: 'auto' }} />
             </div>
-
-            <h1 className="font-serif text-[clamp(28px,3.2vw,48px)] font-bold tracking-tight leading-[1.08] text-[#2B1B10] dark:text-[#F5EAD9] mb-2">
-              Built for better coffee decisions.
-            </h1>
-
-            <p className="text-xs sm:text-sm lg:text-base text-[#6E5D4F] dark:text-[#B5A495] leading-relaxed max-w-[650px] mx-auto">
-              Designed with state-of-the-art AI architecture to deliver accurate, non-hallucinated recommendations.
+            <h2 className="stat-title" style={{ fontSize: '18px' }}>Personalized Recommendations</h2>
+            <p className="stat-desc">
+              Recommends coffee based on preferences including temperature, sweetness, milk options, and roast style.
             </p>
-          </header>
+          </article>
 
-          {/* 4-Column Cards Grid (All 4 cards fit in 1 row on desktop) */}
-          <div className="cards-grid-4col !mb-3 sm:!mb-5">
-            
-            {/* Card 1 */}
-            <article className="info-card !p-5 rounded-2xl bg-white/70 dark:bg-[#18110C]/80 border border-[#E6D5C3] dark:border-[#2A1D15] shadow-sm flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-9 h-9 rounded-xl bg-[#B85C2C]/10 text-[#B85C2C] dark:text-[#D9A441] flex items-center justify-center">
-                  <Sliders className="w-4 h-4" />
-                </div>
-                <h2 className="text-base sm:text-lg font-serif font-bold text-[#2B1B10] dark:text-[#F5EAD9] leading-tight">
-                  Personalized Recommendations
-                </h2>
-              </div>
-              <p className="text-xs text-[#6E5D4F] dark:text-[#B5A495] leading-relaxed mt-2">
-                Recommends coffee based on preferences including temperature, sweetness, milk options, and roast style.
-              </p>
-            </article>
-
-            {/* Card 2 */}
-            <article className="info-card !p-5 rounded-2xl bg-white/70 dark:bg-[#18110C]/80 border border-[#E6D5C3] dark:border-[#2A1D15] shadow-sm flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-9 h-9 rounded-xl bg-[#B85C2C]/10 text-[#B85C2C] dark:text-[#D9A441] flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <h2 className="text-base sm:text-lg font-serif font-bold text-[#2B1B10] dark:text-[#F5EAD9] leading-tight">
-                  RAG-Grounded Answers
-                </h2>
-              </div>
-              <p className="text-xs text-[#6E5D4F] dark:text-[#B5A495] leading-relaxed mt-2">
-                Grounds responses strictly in the official knowledge base without inventing menu items or prices.
-              </p>
-            </article>
-
-            {/* Card 3 */}
-            <article className="info-card !p-5 rounded-2xl bg-white/70 dark:bg-[#18110C]/80 border border-[#E6D5C3] dark:border-[#2A1D15] shadow-sm flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-9 h-9 rounded-xl bg-[#B85C2C]/10 text-[#B85C2C] dark:text-[#D9A441] flex items-center justify-center">
-                  <DollarSign className="w-4 h-4" />
-                </div>
-                <h2 className="text-base sm:text-lg font-serif font-bold text-[#2B1B10] dark:text-[#F5EAD9] leading-tight">
-                  Budget Awareness
-                </h2>
-              </div>
-              <p className="text-xs text-[#6E5D4F] dark:text-[#B5A495] leading-relaxed mt-2">
-                Respects your selected spending limit, such as under ₹200/₹250, and filters items automatically.
-              </p>
-            </article>
-
-            {/* Card 4 */}
-            <article className="info-card !p-5 rounded-2xl bg-white/70 dark:bg-[#18110C]/80 border border-[#E6D5C3] dark:border-[#2A1D15] shadow-sm flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-9 h-9 rounded-xl bg-[#B85C2C]/10 text-[#B85C2C] dark:text-[#D9A441] flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <h2 className="text-base sm:text-lg font-serif font-bold text-[#2B1B10] dark:text-[#F5EAD9] leading-tight">
-                  Dietary & Allergen Safety
-                </h2>
-              </div>
-              <p className="text-xs text-[#6E5D4F] dark:text-[#B5A495] leading-relaxed mt-2">
-                Supports dairy-free options like Oat Milk and checks allergen info before making recommendations.
-              </p>
-            </article>
-
-          </div>
-
-          {/* Centered CTA Section */}
-          <div className="cta-container">
-            <div className="cta-banner">
-              <h3 className="cta-title">Experience smart coffee recommendations</h3>
-              <p className="cta-desc">
-                Try CoffeeMind AI today and get instant, grounded beverage choices.
-              </p>
-              <div className="cta-button-wrap">
-                <button
-                  onClick={() => onNavigate(isAuthenticated ? 'chat' : 'auth')}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#B85C2C] to-[#A34E22] hover:from-[#A34E22] hover:to-[#8B3E18] text-white font-bold text-xs sm:text-sm shadow-lg inline-flex items-center gap-2 hover:scale-[1.02] transition-transform"
-                >
-                  <span>Start Your Coffee Journey</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+          <article className="stat-card">
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '10px',
+              background: 'rgba(217,164,65,0.16)', color: 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: '14px'
+            }}>
+              <ShieldCheck size={18} style={{ margin: 'auto' }} />
             </div>
-          </div>
+            <h2 className="stat-title" style={{ fontSize: '18px' }}>RAG-Grounded Answers</h2>
+            <p className="stat-desc">
+              Grounds responses strictly in the official knowledge base without inventing menu items or prices.
+            </p>
+          </article>
 
+          <article className="stat-card">
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '10px',
+              background: 'rgba(217,164,65,0.16)', color: 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: '14px'
+            }}>
+              <DollarSign size={18} style={{ margin: 'auto' }} />
+            </div>
+            <h2 className="stat-title" style={{ fontSize: '18px' }}>Budget Awareness</h2>
+            <p className="stat-desc">
+              Respects your selected spending limit, such as under ₹200/₹250, and filters items automatically.
+            </p>
+          </article>
+
+          <article className="stat-card">
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '10px',
+              background: 'rgba(217,164,65,0.16)', color: 'var(--accent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: '14px'
+            }}>
+              <CheckCircle2 size={18} style={{ margin: 'auto' }} />
+            </div>
+            <h2 className="stat-title" style={{ fontSize: '18px' }}>Dietary & Allergen Safety</h2>
+            <p className="stat-desc">
+              Supports dairy-free options like Oat Milk and checks allergen info before making recommendations.
+            </p>
+          </article>
+        </section>
+
+        <section style={{
+          background: 'var(--card-bg)',
+          color: 'var(--card-ink)',
+          borderRadius: 'var(--radius)',
+          padding: '44px 36px',
+          textAlign: 'center',
+          border: '1px solid var(--border)'
+        }}>
+          <h3 style={{ fontSize: '26px', fontWeight: 700, margin: '0 0 12px', color: 'var(--card-ink)' }}>
+            Discover your personalized match
+          </h3>
+          <p style={{ fontSize: '15px', color: 'var(--card-ink-muted)', margin: '0 auto 24px', maxWidth: '520px' }}>
+            Experience precision AI recommendations grounded in our artisanal coffee menu knowledge base.
+          </p>
+          <button
+            className="btn-primary"
+            onClick={() => onNavigate(isAuthenticated ? 'chat' : 'auth')}
+          >
+            <span>Start Recommendation Chat</span>
+            <ArrowRight size={16} />
+          </button>
         </section>
       </main>
-    </div>
+    </>
   );
 };

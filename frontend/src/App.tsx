@@ -432,6 +432,8 @@ export default function App() {
       <LandingPage
         onNavigate={navigateTo}
         isAuthenticated={!!authToken}
+        userProfile={userProfile}
+        onSignOut={handleLogout}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
