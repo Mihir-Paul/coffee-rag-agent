@@ -34,7 +34,7 @@ import { FeaturesPage } from './components/FeaturesPage';
 import { TechnologyPage } from './components/TechnologyPage';
 import { AppView } from './components/Navbar';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 const QUICK_ACTIONS = [
   { label: 'Recommend something', icon: Sparkles, prompt: 'Recommend a popular coffee for me' },
@@ -368,11 +368,12 @@ export default function App() {
       }
 
     } catch (err: any) {
-      console.error('Chat error:', err);
+      console.error('[CoffeeMind API Error]:', err);
       
       let errorDisplayMessage = err.message || 'CoffeeMind is temporarily unavailable. Please try again later.';
       if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
-        errorDisplayMessage = 'CoffeeMind is temporarily unavailable. Please check that the backend is running at http://localhost:8000.';
+        errorDisplayMessage = `Unable to connect to backend at ${API_BASE_URL}. Please verify the Render backend is active and CORS is configured.`;
+        console.error(`[CoffeeMind Network Error] Failed to reach ${API_BASE_URL}/api/chat:`, err);
       }
 
       const errorMsg: Message = {

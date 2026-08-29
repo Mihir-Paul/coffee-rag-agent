@@ -203,6 +203,17 @@ def generate_deterministic_title(message: str) -> str:
     return "Coffee Session"
 
 
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "app": "CoffeeMind AI Backend",
+        "health": "/health",
+        "docs": "/docs",
+        "chat_endpoint": "/api/chat"
+    }
+
+
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
@@ -395,6 +406,7 @@ async def get_conversation_messages(conversation_id: str, auth_user: Authenticat
 
 
 @app.post("/api/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(payload: ChatRequest, auth_user: AuthenticatedUser = Depends(verify_supabase_token)):
     """Secured chat endpoint verified via Supabase JWT token."""
     user_msg = payload.message.strip()
