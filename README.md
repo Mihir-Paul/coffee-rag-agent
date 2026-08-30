@@ -241,6 +241,10 @@ The entire application (React/Vite static frontend + FastAPI/Google ADK Python b
    - `VITE_SUPABASE_ANON_KEY`: Your public Supabase anon key.
 4. **Deploy:** Click **Deploy**. Your frontend and backend will be live together on `https://your-project.vercel.app`.
 
+> [!CAUTION]
+> **Do NOT override Build, Output, or Install Settings in the Vercel Dashboard!**  
+> This project uses `vercel.json`'s `builds` configuration to build both the static Vite frontend and the Python serverless function. If manual overrides are configured in **Project Settings → General → Build & Development Settings** (such as setting Build Command to empty/None or Install Command to `pip install` only), those dashboard settings will take precedence over `vercel.json` and prevent the frontend from building. Leave **Build Command**, **Output Directory**, and **Install Command** toggled to their default/inherited settings.
+
 ### Important Caveats & Architecture Notes
 
 > [!WARNING]

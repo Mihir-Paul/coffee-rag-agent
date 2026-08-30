@@ -1,4 +1,5 @@
 {
+  "//": "This project uses vercel.json's legacy builds/routes config to deploy both the Vite frontend and the Python backend as one project. Do NOT set a Build Command, Output Directory, or Install Command override in the Vercel dashboard's Project Settings — those overrides take precedence over this file and will break the build (e.g. skipping the frontend build entirely). Leave all three fields on their default/inherited setting.",
   "version": 2,
   "builds": [
     {
