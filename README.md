@@ -213,24 +213,34 @@ python -m pytest tests/
 
 ## 7. Deploying — Vercel Only (Unified Full-Stack Deployment)
 
-The entire application (React/Vite static frontend + FastAPI/Google ADK Python backend) can be deployed as a single, unified project on Vercel with zero external backend services required.
+The entire application (React/Vite static frontend + FastAPI/Google ADK Python serverless backend) can be deployed as a single project on Vercel with zero external backend services required.
 
 ### How the Pieces are Wired
-- **Static Frontend:** `frontend/` is built using `@vercel/static-build` into static assets in `dist/`.
-- **Serverless Python Function:** `api/index.py` is compiled via `@vercel/python` and exports the FastAPI `app` from `server.py`.
-- **Runtime Assets:** `vercel.json` bundles non-Python assets (`coffee_agent/**`, `knowledge_base/**`, and `server.py`) into the function container.
-- **Unified Routing:** 
-  - Requests matching `/api/(.*)` are routed directly to `api/index.py`.
-  - All other routes are served from `/frontend/dist/$1` as a Single Page Application (SPA).
-  - The frontend performs relative same-origin calls (`/api/chat`, `/api/me`, etc.) on the single Vercel domain.
+- **Modern Routing (`rewrites`):** 
+  - `/api/(.*)` $\rightarrow$ `/api/index` (routes all `/api/*` traffic to the FastAPI Python serverless function).
+  - `/(.*)` $\rightarrow$ `/index.html` (serves the SPA fallback while Vercel automatically serves matching static files in `frontend/dist`).
+- **Serverless Python Function:** `api/index.py` runs as a Vercel Serverless Function and exports `app` from `server.py`.
+- **Runtime Assets:** `vercel.json` bundles non-Python assets (`coffee_agent/**`, `knowledge_base/**`, and `server.py`) into the function container using `functions.includeFiles`.
 
-### Step-by-Step Deployment Steps
+---
+
+### Step-by-Step Deployment Guide
+
 1. **Push your repository to GitHub / GitLab / Bitbucket.**
 2. **Import into Vercel:**
-   - Go to [Vercel Dashboard](https://vercel.com/new).
+   - Go to the [Vercel Dashboard](https://vercel.com/new).
    - Select your repository and leave the **Root Directory** as the repository root (`./`).
-   - Vercel automatically detects `vercel.json`.
-3. **Configure Environment Variables in Vercel:**
+3. **Configure Build & Output Settings in Vercel Dashboard:**
+   Under **Project Settings → General → Build and Development Settings**, configure:
+   - **Build Command (Override ON):** `cd frontend && npm install && npm run build`
+   - **Output Directory (Override ON):** `frontend/dist`
+   - **Install Command (Override OFF):** Leave toggled **OFF** / default.
+   
+   > [!CAUTION]
+   > **Keep the Install Command override OFF!**  
+   > Setting the dashboard Install Command override to `pip install -r requirements.txt` will completely replace Vercel's Node.js dependency installation step, causing the frontend build to fail. Python dependencies are declared via `"installCommand": "pip install -r requirements.txt"` in `vercel.json`.
+
+4. **Configure Environment Variables in Vercel:**
    - `GEMINI_API_KEY`: Your Google Gemini API Key (Secret).
    - `GEMINI_MODEL`: `gemini-3.7-flash` (or `gemini-2.5-flash`).
    - `SUPABASE_URL`: Your Supabase project URL (e.g. `https://xyz.supabase.co`).
@@ -239,11 +249,9 @@ The entire application (React/Vite static frontend + FastAPI/Google ADK Python b
    - `SUPABASE_JWT_SECRET`: Your Supabase JWT secret.
    - `VITE_SUPABASE_URL`: Your Supabase project URL.
    - `VITE_SUPABASE_ANON_KEY`: Your public Supabase anon key.
-4. **Deploy:** Click **Deploy**. Your frontend and backend will be live together on `https://your-project.vercel.app`.
+5. **Deploy:** Click **Deploy**. Your frontend and backend will be live together on `https://your-project.vercel.app`.
 
-> [!CAUTION]
-> **Do NOT override Build, Output, or Install Settings in the Vercel Dashboard!**  
-> This project uses `vercel.json`'s `builds` configuration to build both the static Vite frontend and the Python serverless function. If manual overrides are configured in **Project Settings → General → Build & Development Settings** (such as setting Build Command to empty/None or Install Command to `pip install` only), those dashboard settings will take precedence over `vercel.json` and prevent the frontend from building. Leave **Build Command**, **Output Directory**, and **Install Command** toggled to their default/inherited settings.
+---
 
 ### Important Caveats & Architecture Notes
 

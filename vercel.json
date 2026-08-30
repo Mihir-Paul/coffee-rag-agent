@@ -1,41 +1,18 @@
 {
-  "//": "This project uses vercel.json's legacy builds/routes config to deploy both the Vite frontend and the Python backend as one project. Do NOT set a Build Command, Output Directory, or Install Command override in the Vercel dashboard's Project Settings — those overrides take precedence over this file and will break the build (e.g. skipping the frontend build entirely). Leave all three fields on their default/inherited setting.",
-  "version": 2,
-  "builds": [
+  "installCommand": "pip install -r requirements.txt",
+  "rewrites": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "source": "/api/(.*)",
+      "destination": "/api/index"
     },
     {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "includeFiles": [
-          "server.py",
-          "coffee_agent/**",
-          "knowledge_base/**"
-        ]
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "functions": {
     "api/index.py": {
+      "includeFiles": "{coffee_agent/**,knowledge_base/**,server.py}",
       "maxDuration": 60
     }
   }
