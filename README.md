@@ -211,35 +211,45 @@ python -m pytest tests/
 
 ---
 
-## 7. Production Deployment (Render Backend + Vercel Frontend)
+## 7. Deploying — Vercel Only (Unified Full-Stack Deployment)
 
-### Backend Deployment on Render:
-1. Create a new **Web Service** on [Render](https://render.com).
-2. Connect your Git repository.
-3. Configure service settings:
-   - **Runtime:** `Python 3`
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `uvicorn server:app --host 0.0.0.0 --port $PORT` (or `python server.py`)
-   - **Health Check Path:** `/health`
-4. Set Environment Variables on Render:
-   - `GEMINI_API_KEY`: Your Google Gemini API Key
-   - `GEMINI_MODEL`: `gemini-3.7-flash`
-   - `SUPABASE_URL`: Your Supabase Project URL
-   - `SUPABASE_ANON_KEY`: Your Supabase Public Anon Key
-   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Service Role Key
-   - `SUPABASE_JWT_SECRET`: Your Supabase JWT Secret
-   - `FRONTEND_URL`: `https://your-coffeemind-frontend.vercel.app`
-   - `ALLOWED_ORIGINS`: `https://your-coffeemind-frontend.vercel.app`
-   - `HOST`: `0.0.0.0`
+The entire application (React/Vite static frontend + FastAPI/Google ADK Python backend) can be deployed as a single, unified project on Vercel with zero external backend services required.
 
-### Frontend Deployment on Vercel:
-1. Import your repository on [Vercel](https://vercel.com).
-2. Root Directory: `frontend`
-3. Framework Preset: `Vite`
-4. Set Environment Variables on Vercel:
-   - `VITE_API_BASE_URL`: `https://your-backend.onrender.com`
-   - `VITE_SUPABASE_URL`: `https://your-project.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY`: `your_public_anon_key`
+### How the Pieces are Wired
+- **Static Frontend:** `frontend/` is built using `@vercel/static-build` into static assets in `dist/`.
+- **Serverless Python Function:** `api/index.py` is compiled via `@vercel/python` and exports the FastAPI `app` from `server.py`.
+- **Runtime Assets:** `vercel.json` bundles non-Python assets (`coffee_agent/**`, `knowledge_base/**`, and `server.py`) into the function container.
+- **Unified Routing:** 
+  - Requests matching `/api/(.*)` are routed directly to `api/index.py`.
+  - All other routes are served from `/frontend/dist/$1` as a Single Page Application (SPA).
+  - The frontend performs relative same-origin calls (`/api/chat`, `/api/me`, etc.) on the single Vercel domain.
+
+### Step-by-Step Deployment Steps
+1. **Push your repository to GitHub / GitLab / Bitbucket.**
+2. **Import into Vercel:**
+   - Go to [Vercel Dashboard](https://vercel.com/new).
+   - Select your repository and leave the **Root Directory** as the repository root (`./`).
+   - Vercel automatically detects `vercel.json`.
+3. **Configure Environment Variables in Vercel:**
+   - `GEMINI_API_KEY`: Your Google Gemini API Key (Secret).
+   - `GEMINI_MODEL`: `gemini-3.7-flash` (or `gemini-2.5-flash`).
+   - `SUPABASE_URL`: Your Supabase project URL (e.g. `https://xyz.supabase.co`).
+   - `SUPABASE_ANON_KEY`: Your public Supabase anon key.
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your server-only Supabase service role key.
+   - `SUPABASE_JWT_SECRET`: Your Supabase JWT secret.
+   - `VITE_SUPABASE_URL`: Your Supabase project URL.
+   - `VITE_SUPABASE_ANON_KEY`: Your public Supabase anon key.
+4. **Deploy:** Click **Deploy**. Your frontend and backend will be live together on `https://your-project.vercel.app`.
+
+### Important Caveats & Architecture Notes
+
+> [!WARNING]
+> **Caveat 1: Vertex AI RAG Corpus SDK Dropped for Bundle Size**  
+> `google-cloud-aiplatform` (~170MB) has been excluded from `requirements.txt` to keep the Python serverless function bundle lightweight and within Vercel's serverless package size limits. The application runs local LangChain chunking and Gemini vector embeddings / fallback search out-of-the-box. If you require the live GCP Vertex AI RAG Corpus path, you must uncomment `google-cloud-aiplatform` in `requirements.txt` and enable Vercel's Large Functions add-on.
+
+> [!IMPORTANT]
+> **Caveat 2: In-Memory Session State on Serverless Functions**  
+> `InMemorySessionService` stores multi-turn conversation memory in the active Python process memory. In Vercel's serverless architecture, different HTTP requests may be routed to different or newly cold-started function instances. While single-turn queries and Supabase-synced histories work smoothly, in-memory session persistence across serverless invocations is not guaranteed. For distributed multi-turn memory on serverless, attach a persistent session store (e.g. Supabase, Redis, or Firestore).
 
 ---
 

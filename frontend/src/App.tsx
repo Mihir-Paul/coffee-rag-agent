@@ -34,7 +34,7 @@ import { FeaturesPage } from './components/FeaturesPage';
 import { TechnologyPage } from './components/TechnologyPage';
 import { AppView } from './components/Navbar';
 
-// Resolve API base URL from VITE_API_URL, VITE_API_BASE_URL, or local fallback
+// Resolve API base URL: defaults to "" in production (relative /api/... calls on Vercel), or http://localhost:8000 in dev mode
 const getApiBaseUrl = (): string => {
   let raw = (
     import.meta.env.VITE_API_URL ||
@@ -49,16 +49,17 @@ const getApiBaseUrl = (): string => {
   // Strip trailing slashes
   raw = raw.replace(/\/+$/, '');
 
-  // Ensure protocol is present if URL is provided
+  // Ensure protocol is present if external host URL is explicitly provided
   if (raw && !raw.startsWith('http://') && !raw.startsWith('https://')) {
     raw = `https://${raw}`;
   }
 
-  // In development, fallback to localhost:8000 if env var not configured
+  // In development, fallback to localhost:8000 if no env var is configured
   if (!raw && import.meta.env.DEV) {
     return 'http://localhost:8000';
   }
 
+  // In production, empty string enables relative same-origin calls (/api/...) on Vercel
   return raw;
 };
 
@@ -325,6 +326,7 @@ export default function App() {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    const targetEndpoint = `${API_BASE_URL}/api/chat`;
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -333,7 +335,6 @@ export default function App() {
         headers['Authorization'] = `Bearer ${effectiveToken}`;
       }
 
-      const targetEndpoint = `${API_BASE_URL}/api/chat`;
       const requestPayload = {
         message: queryText,
         session_id: sessionId
@@ -426,8 +427,12 @@ export default function App() {
       
       let errorDisplayMessage = err.message || 'CoffeeMind is temporarily unavailable. Please try again later.';
       if (err.name === 'TypeError' && typeof err.message === 'string' && err.message.includes('Failed to fetch')) {
-        errorDisplayMessage = `Unable to connect to backend at ${API_BASE_URL}. Please verify your Render backend is active and that CORS is configured for your frontend origin.`;
-        console.error(`[CoffeeMind Network Error] Failed to reach ${API_BASE_URL}/api/chat:`, err);
+        if (import.meta.env.DEV) {
+          errorDisplayMessage = `Unable to connect to backend at ${API_BASE_URL || 'http://localhost:8000'}. Please verify the local server is running on port 8000.`;
+        } else {
+          errorDisplayMessage = `Unable to reach CoffeeMind backend service. Please check your network connection or try again in a few moments.`;
+        }
+        console.error(`[CoffeeMind Network Error] Failed to reach ${targetEndpoint}:`, err);
       }
 
       const errorMsg: Message = {

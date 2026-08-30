@@ -1,16 +1,25 @@
+# Core Google AI & Agent Development Kit
 google-adk>=2.7.0
 google-genai>=2.17.0
-google-cloud-aiplatform>=1.165.0
+# Optional: Vertex AI SDK (Uncomment only if deploying with a live Vertex AI RAG Corpus and Vercel Large Functions enabled)
+# google-cloud-aiplatform>=1.165.0
+
+# LangChain RAG & Document Embeddings
 langchain-core>=1.0.0
 langchain-community>=0.3.0
 langchain-text-splitters>=1.0.0
 langchain-google-genai>=4.0.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-pytest>=8.0.0
-numpy>=1.26.0
+
+# FastAPI Backend & ASGI Server
 fastapi>=0.110.0
 uvicorn>=0.28.0
+
+# Configuration & Data Validation
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+numpy>=1.26.0
+
+# Supabase Auth & JWT
 supabase>=2.4.0
 pyjwt>=2.8.0
 watchfiles>=1.0.0
