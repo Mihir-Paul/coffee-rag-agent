@@ -40,7 +40,7 @@ const getApiBaseUrl = (): string => {
     import.meta.env.VITE_API_URL ||
     import.meta.env.VITE_API_BASE_URL ||
     import.meta.env.VITE_BACKEND_URL ||
-    'http://localhost:8000'
+    ''
   ).toString().trim();
 
   // Strip wrapping quotes if any entered in deployment settings
@@ -49,12 +49,17 @@ const getApiBaseUrl = (): string => {
   // Strip trailing slashes
   raw = raw.replace(/\/+$/, '');
 
-  // Ensure protocol is present
+  // Ensure protocol is present if URL is provided
   if (raw && !raw.startsWith('http://') && !raw.startsWith('https://')) {
     raw = `https://${raw}`;
   }
 
-  return raw || 'http://localhost:8000';
+  // In development, fallback to localhost:8000 if env var not configured
+  if (!raw && import.meta.env.DEV) {
+    return 'http://localhost:8000';
+  }
+
+  return raw;
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -334,11 +339,9 @@ export default function App() {
         session_id: sessionId
       };
 
-      console.log(`[CoffeeMind Chat Request] POST ${targetEndpoint}`, {
-        endpoint: targetEndpoint,
-        payload: requestPayload,
-        hasAuthToken: Boolean(effectiveToken)
-      });
+      // Explicit Console Logging for debugging & observability
+      console.log('[CoffeeMind] Request URL:', targetEndpoint);
+      console.log('[CoffeeMind] Request Payload:', requestPayload);
 
       const res = await fetch(targetEndpoint, {
         method: 'POST',
@@ -348,15 +351,11 @@ export default function App() {
 
       const data = await res.json().catch(() => ({}));
 
-      console.log(`[CoffeeMind Chat Response] HTTP ${res.status}`, {
-        endpoint: targetEndpoint,
-        status: res.status,
-        ok: res.ok,
-        responseJson: data
-      });
+      console.log('[CoffeeMind] Response Status:', res.status, res.statusText);
+      console.log('[CoffeeMind] Response Body:', data);
 
       if (!res.ok || data.success === false) {
-        console.error('[CoffeeMind Backend Error Details]:', {
+        console.error('[CoffeeMind] Backend Error Details:', {
           requestUrl: targetEndpoint,
           status: res.status,
           statusText: res.statusText,
