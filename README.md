@@ -217,8 +217,9 @@ The entire application (React/Vite static frontend + FastAPI/Google ADK Python s
 
 ### How the Pieces are Wired
 - **Modern Routing (`rewrites`):** 
-  - `/api/(.*)` $\rightarrow$ `/api/index` (routes all `/api/*` traffic to the FastAPI Python serverless function).
-  - `/(.*)` $\rightarrow$ `/index.html` (serves the SPA fallback while Vercel automatically serves matching static files in `frontend/dist`).
+  - `vercel.json` uses a negative lookahead rewrite `{"source": "/((?!api/).*)", "destination": "/index.html"}` to route non-API client paths to the SPA entrypoint, while preserving static asset serving (`/assets/...`).
+  - Vercel automatically routes all `/api/*` endpoints directly to `api/index.py` with the full request path preserved.
+  - **Root Path (`/`):** Note that `server.py` defines an explicit `@app.get("/")` backend route. Under Vercel's filesystem-priority serving, visiting `/` in the browser will serve the static React frontend (`index.html`) from the build output, while direct API calls and sub-routes under `/api/*` pass directly to the FastAPI serverless handler.
 - **Serverless Python Function:** `api/index.py` runs as a Vercel Serverless Function and exports `app` from `server.py`.
 - **Runtime Assets:** `vercel.json` bundles non-Python assets (`coffee_agent/**`, `knowledge_base/**`, and `server.py`) into the function container using `functions.includeFiles`.
 
