@@ -34,7 +34,30 @@ import { FeaturesPage } from './components/FeaturesPage';
 import { TechnologyPage } from './components/TechnologyPage';
 import { AppView } from './components/Navbar';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000').replace(/\/+$/, '');
+// Resolve API base URL from VITE_API_URL, VITE_API_BASE_URL, or local fallback
+const getApiBaseUrl = (): string => {
+  let raw = (
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    'http://localhost:8000'
+  ).toString().trim();
+
+  // Strip wrapping quotes if any entered in deployment settings
+  raw = raw.replace(/^["']|["']$/g, '');
+
+  // Strip trailing slashes
+  raw = raw.replace(/\/+$/, '');
+
+  // Ensure protocol is present
+  if (raw && !raw.startsWith('http://') && !raw.startsWith('https://')) {
+    raw = `https://${raw}`;
+  }
+
+  return raw || 'http://localhost:8000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const QUICK_ACTIONS = [
   { label: 'Recommend something', icon: Sparkles, prompt: 'Recommend a popular coffee for me' },
@@ -300,8 +323,10 @@ export default function App() {
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const effectiveToken = authToken || localStorage.getItem('coffeemind_mock_token') || 'mock-demo-token-aarav';
-      headers['Authorization'] = `Bearer ${effectiveToken}`;
+      const effectiveToken = authToken || localStorage.getItem('coffeemind_mock_token');
+      if (effectiveToken) {
+        headers['Authorization'] = `Bearer ${effectiveToken}`;
+      }
 
       const targetEndpoint = `${API_BASE_URL}/api/chat`;
       const requestPayload = {
@@ -341,10 +366,17 @@ export default function App() {
         if (res.status === 401) {
           throw new Error(data.message || data.error || data.detail || 'Your session has expired. Please sign in again.');
         } else if (res.status === 429 || data.error === 'AI_QUOTA_EXHAUSTED') {
-          throw new Error(data.message || 'CoffeeMind is temporarily at capacity. Please try again in a few moments.');
+          throw new Error(data.message || 'CoffeeMind usage quota reached. Please try again in a few moments.');
         } else {
-          const detailMsg = data.message || data.error || (typeof data.detail === 'string' ? data.detail : null);
-          throw new Error(detailMsg || `Server error (${res.status} ${res.statusText})`);
+          let detailMsg = data.message;
+          if (!detailMsg && typeof data.detail === 'string') {
+            detailMsg = data.detail;
+          } else if (!detailMsg && Array.isArray(data.detail)) {
+            detailMsg = data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+          } else if (!detailMsg && data.error) {
+            detailMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          }
+          throw new Error(detailMsg || `Backend server error (${res.status} ${res.statusText || 'Error'})`);
         }
       }
 
@@ -394,8 +426,8 @@ export default function App() {
       console.error('[CoffeeMind API Error]:', err);
       
       let errorDisplayMessage = err.message || 'CoffeeMind is temporarily unavailable. Please try again later.';
-      if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
-        errorDisplayMessage = `Unable to connect to backend at ${API_BASE_URL}. Please verify the Render backend is active and CORS is configured.`;
+      if (err.name === 'TypeError' && typeof err.message === 'string' && err.message.includes('Failed to fetch')) {
+        errorDisplayMessage = `Unable to connect to backend at ${API_BASE_URL}. Please verify your Render backend is active and that CORS is configured for your frontend origin.`;
         console.error(`[CoffeeMind Network Error] Failed to reach ${API_BASE_URL}/api/chat:`, err);
       }
 

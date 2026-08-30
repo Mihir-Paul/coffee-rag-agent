@@ -88,10 +88,12 @@ for env_var in ["FRONTEND_URL", "ALLOWED_ORIGINS", "CORS_ORIGINS", "VERCEL_URL",
                 if clean_origin not in allowed_origins:
                     allowed_origins.append(clean_origin)
 
+logger.info(f"Configured CORS allowed origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
+    allow_origin_regex=r"^(https:\/\/([a-zA-Z0-9_-]+\.)*vercel\.app|https:\/\/([a-zA-Z0-9_-]+\.)*onrender\.com|http:\/\/localhost(:\d+)?|http:\/\/127\.0\.0\.1(:\d+)?)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
